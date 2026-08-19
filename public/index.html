@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Rat's Kitchen — v3 test</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  :root{
+    --ink:#0d0b0a; --paper:#e8dfce; --grime:#1b1714; --stall:#241d18;
+    --red:#c1352b; --blue:#2e6f8e; --green:#5a7d3c; --yellow:#c99a25;
+    --hot:#e0531f; --bone:#cdbfa6; --line:#3a2f27;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Courier New',monospace; background:var(--grime); color:var(--bone);
+    background-image:radial-gradient(circle at 20% 10%,#2a221c 0,transparent 40%),
+                     radial-gradient(circle at 80% 90%,#221a15 0,transparent 45%);
+    min-height:100vh; padding:12px; font-size:14px;
+  }
+  h1{font-family:'Arial Black',sans-serif; letter-spacing:1px; text-transform:uppercase;
+     color:var(--paper); font-size:22px; margin-bottom:4px}
+  h1 span{color:var(--hot)}
+  .sub{color:#8a7a66; font-size:11px; margin-bottom:14px; text-transform:uppercase; letter-spacing:2px}
+  .panel{background:var(--stall); border:1px solid var(--line); border-radius:4px;
+         padding:14px; margin-bottom:12px}
+  button{font-family:inherit; background:var(--red); color:#fff; border:none;
+         padding:8px 14px; border-radius:3px; cursor:pointer; font-weight:bold;
+         text-transform:uppercase; font-size:12px; letter-spacing:1px; margin:3px}
+  button:hover{filter:brightness(1.15)}
+  button.ghost{background:transparent; border:1px solid var(--line); color:var(--bone)}
+  button:disabled{opacity:.35; cursor:not-allowed}
+  input{font-family:inherit; background:var(--ink); color:var(--paper); border:1px solid var(--line);
+        padding:8px; border-radius:3px; font-size:14px; width:140px}
+  .row{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+  .seats{display:flex; flex-direction:column; gap:8px}
+  .seat{border:1px solid var(--line); border-radius:4px; padding:10px; background:var(--ink);
+        position:relative}
+  .seat.active{border-color:var(--hot); box-shadow:0 0 0 1px var(--hot)}
+  .seat.dead{opacity:.4}
+  .seat.you{border-left:3px solid var(--yellow)}
+  .seat .nm{font-weight:bold; color:var(--paper); text-transform:uppercase; letter-spacing:1px}
+  .stat{display:inline-block; margin-right:12px; font-size:12px}
+  .stat b{color:var(--paper); font-size:15px}
+  .stars{color:var(--hot); letter-spacing:2px}
+  .rats{display:flex; flex-wrap:wrap; gap:4px; margin-top:8px}
+  .rat{font-size:10px; padding:2px 5px; border-radius:2px; border:1px solid #000;
+       color:#fff; white-space:nowrap}
+  .rat.red{background:var(--red)} .rat.blue{background:var(--blue)}
+  .rat.green{background:var(--green)} .rat.yellow{background:var(--yellow); color:#000}
+  .rat.none{background:#555}
+  .badge{font-size:9px; background:#000; color:var(--hot); padding:1px 4px; border-radius:2px;
+         margin-left:4px; text-transform:uppercase}
+  .armed{font-size:10px; color:var(--hot); margin-top:4px}
+  .hand{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+  .card{background:var(--paper); color:var(--ink); border-radius:3px; padding:8px 10px;
+        min-width:90px; cursor:pointer; border:2px solid #0000; font-size:12px}
+  .card:hover{border-color:var(--hot)}
+  .card .cn{font-weight:bold; text-transform:uppercase; font-size:11px; letter-spacing:.5px}
+  .acts{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px}
+  .log{font-size:11px; color:#9a8a76; max-height:150px; overflow:auto; line-height:1.6}
+  .log div{padding:2px 0; border-bottom:1px solid #2a221c}
+  .win{color:var(--hot); font-weight:bold; text-transform:uppercase; letter-spacing:1px}
+  .tag{font-size:10px; color:#7a6a56; text-transform:uppercase; letter-spacing:1px}
+  .prompt{background:var(--ink); border:1px solid var(--hot); border-radius:4px; padding:12px; margin-top:8px}
+  .hidden{display:none}
+  .key{font-size:10px; color:#7a6a56; margin-top:6px}
+</style>
+</head>
+<body>
+<h1>Rat's <span>Kitchen</span></h1>
+<div class="sub">v3 playtest build · first to weight 5 rules the market</div>
+
+<!-- LOBBY -->
+<div id="lobby" class="panel">
+  <div class="row">
+    <input id="name" placeholder="Your name" />
+    <button id="btnCreate">Create table</button>
+    <span class="tag">or</span>
+    <input id="code" placeholder="Code" maxlength="4" style="width:90px;text-transform:uppercase" />
+    <button id="btnJoin" class="ghost">Join</button>
+  </div>
+  <div id="roomBox" class="hidden" style="margin-top:12px">
+    <div class="tag">Table <b id="roomCode" style="color:var(--paper)"></b> — share the code</div>
+    <div id="roomPlayers" class="seats" style="margin-top:8px"></div>
+    <div class="row" style="margin-top:8px">
+      <button id="btnBot" class="ghost">+ Add bot</button>
+      <button id="btnStart">Start game</button>
+    </div>
+    <div class="key">2–8 players. Bots play the tuned strategy.</div>
+  </div>
+  <div id="errBox" style="color:var(--hot);margin-top:8px"></div>
+</div>
+
+<!-- GAME -->
+<div id="game" class="hidden">
+  <div class="panel">
+    <div class="row" style="justify-content:space-between">
+      <div class="tag">Turn <b id="turnNo" style="color:var(--paper)"></b> · Bins holds <b id="binsN" style="color:var(--paper)"></b> rats · Deck <b id="deckN" style="color:var(--paper)"></b></div>
+      <div id="banner" class="win"></div>
+    </div>
+  </div>
+  <div id="seats" class="seats"></div>
+  <div class="panel">
+    <div class="tag">Your hand</div>
+    <div id="hand" class="hand"></div>
+    <div id="actions" class="acts"></div>
+    <div id="targetPrompt" class="prompt hidden"></div>
+  </div>
+  <div class="panel">
+    <div class="tag">Kitchen log</div>
+    <div id="log" class="log"></div>
+  </div>
+</div>
+
+<script>
+const socket = io();
+let YOU=null, STATE=null, pending=null;
+const $=id=>document.getElementById(id);
+
+$('btnCreate').onclick=()=>socket.emit('create',{name:$('name').value.trim()});
+$('btnJoin').onclick=()=>socket.emit('join',{code:$('code').value.trim().toUpperCase(),name:$('name').value.trim()});
+$('btnBot').onclick=()=>socket.emit('addBot');
+$('btnStart').onclick=()=>socket.emit('start');
+
+socket.on('room',r=>{
+  if(r.you) YOU=r.you;
+  $('roomBox').classList.remove('hidden');
+  $('roomCode').textContent=r.code;
+  $('roomPlayers').innerHTML=r.players.map(p=>
+    `<div class="seat"><span class="nm">${p.name}</span> ${p.bot?'<span class="tag">bot</span>':''}</div>`).join('');
+});
+socket.on('err',m=>{$('errBox').textContent=m; setTimeout(()=>$('errBox').textContent='',3000)});
+socket.on('begin',()=>{$('lobby').classList.add('hidden'); $('game').classList.remove('hidden')});
+socket.on('state',s=>{STATE=s; render()});
+
+const COLK={red:'red',blue:'blue',green:'green',yellow:'yellow'};
+function ratChip(r){
+  const c=r.col?COLK[r.col]:'none';
+  const p=r.prop?`<span class="badge">${propShort(r.prop)}</span>`:'';
+  return `<span class="rat ${c}">${r.name} ${r.w}w/${r.heat}h${p}</span>`;
+}
+function propShort(p){return{draw_again:'run',extra_draw:'sow',tax:'toll',no_dump:'feral',
+  no_explode:'spice',no_steal:'boiler',free_eat:'larder'}[p]||p}
+
+function render(){
+  if(!STATE) return;
+  $('turnNo').textContent=STATE.turn;
+  $('binsN').textContent=STATE.binsRats;
+  $('deckN').textContent=STATE.deckLeft;
+  // seats
+  $('seats').innerHTML=STATE.players.map(p=>{
+    const cls=['seat'];
+    if(p.id===STATE.active) cls.push('active');
+    if(!p.alive) cls.push('dead');
+    if(p.id===YOU) cls.push('you');
+    const stars='★'.repeat(Math.max(0,p.stars))+'☆'.repeat(Math.max(0,3-p.stars));
+    const armed=p.armed?`<div class="armed">⚑ armed inspection [${p.armed.cols.join('/')}] ${p.armed.ready?'READY':'arming'}</div>`:'';
+    const flags=[p.boardup?'boarded up':'',p.territorial?'territorial':''].filter(Boolean).join(' · ');
+    return `<div class="${cls.join(' ')}">
+      <div><span class="nm">${p.name}</span> ${p.bot?'<span class="tag">bot</span>':''} ${p.id===STATE.active?'<span class="tag">— to act</span>':''}</div>
+      <div style="margin-top:6px">
+        <span class="stat stars">${stars}</span>
+        <span class="stat">WEIGHT <b>${p.weight}</b>/5</span>
+        <span class="stat">rats <b>${p.count}</b></span>
+        <span class="stat">heat <b>${p.heat}</b></span>
+        <span class="stat">hand <b>${p.handCount}</b></span>
+      </div>
+      ${flags?`<div class="tag" style="margin-top:4px">${flags}</div>`:''}
+      ${armed}
+      <div class="rats">${p.rats.map(ratChip).join('')}</div>
+    </div>`;
+  }).join('');
+  // banner
+  if(STATE.over){
+    const w=STATE.players.find(p=>p.id===STATE.winner);
+    $('banner').textContent=w?`${w.name} wins!`:'Game over';
+  } else $('banner').textContent='';
+  // hand
+  const me=STATE.players.find(p=>p.id===YOU);
+  $('hand').innerHTML=(me&&me.hand||[]).map(c=>`<div class="card"><div class="cn">${c.name}</div></div>`).join('')||'<span class="tag">no cards</span>';
+  // actions
+  renderActions();
+  // log
+  $('log').innerHTML=STATE.log.map(l=>`<div>${l}</div>`).join('');
+  $('log').scrollTop=$('log').scrollHeight;
+}
+
+function renderActions(){
+  const box=$('actions'); const prompt=$('targetPrompt');
+  prompt.classList.add('hidden'); prompt.innerHTML='';
+  if(!STATE || STATE.over || STATE.active!==YOU){ box.innerHTML=''; return; }
+  const acts=STATE.yourActions||[];
+  box.innerHTML=acts.map((a,i)=>`<button data-i="${i}">${a.label}</button>`).join('');
+  [...box.querySelectorAll('button')].forEach(b=>{
+    b.onclick=()=>chooseAction(acts[+b.dataset.i]);
+  });
+}
+
+function chooseAction(a){
+  if(a.needsRat){
+    const me=STATE.players.find(p=>p.id===YOU);
+    showPrompt('Choose a rat to eat:',
+      me.rats.map((r,i)=>({label:`${r.name} (${r.w}w)`, cb:()=>send(a,null,ratIdByIndex(i))})));
+    return;
+  }
+  if(a.needsTarget){
+    showPrompt('Choose a target:',
+      a.targets.map(tid=>{
+        const t=STATE.players.find(p=>p.id===tid);
+        return {label:t?t.name:tid, cb:()=>send(a,tid,null)};
+      }));
+    return;
+  }
+  send(a,null,null);
+}
+// NOTE: server resolves rat choice by weight; ratId not strictly needed for eat in this build
+function ratIdByIndex(){return null;}
+
+function showPrompt(title,opts){
+  const p=$('targetPrompt'); p.classList.remove('hidden');
+  p.innerHTML=`<div class="tag">${title}</div><div class="acts" id="promptOpts"></div>`;
+  const box=$('promptOpts');
+  opts.forEach(o=>{const b=document.createElement('button'); b.className='ghost'; b.textContent=o.label; b.onclick=o.cb; box.appendChild(b);});
+  const cancel=document.createElement('button'); cancel.className='ghost'; cancel.textContent='Cancel';
+  cancel.onclick=()=>{p.classList.add('hidden');}; box.appendChild(cancel);
+}
+
+function send(a,target,ratId){
+  socket.emit('act',{type:a.type,id:a.id,target,ratId});
+  $('targetPrompt').classList.add('hidden');
+}
+</script>
+</body>
+</html>
