@@ -148,5 +148,8 @@ io.on('connection', (socket) => {
   });
 });
 
+const VERSION = '3.0.0';
+app.get('/version', (req, res) => res.json({ version: VERSION }));
+
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Rat's Kitchen v3 on :${PORT}`));
+server.listen(PORT, () => console.log(`Rat's Kitchen v${VERSION} on :${PORT}`));
