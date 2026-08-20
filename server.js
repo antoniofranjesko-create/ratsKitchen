@@ -29,11 +29,11 @@ function project(g, viewerId) {
       id: p.id, name: p.name, bot: p.bot, alive: p.alive,
       stars: p.stars, weight: E.weight(p), heat: E.heat(p), count: p.rats.length,
       // rats are public (zones are public) — show kind + colour, no ids to others
-      rats: p.rats.map(r => ({ name: r.name, w: r.w, heat: r.heat, col: r.col, prop: r.prop })),
+      rats: p.rats.map(r => ({ kind: r.kind, name: r.name, w: r.w, heat: r.heat, col: r.col, cols: r.cols||null, prop: r.prop, desc: (E.RATS[r.kind]&&E.RATS[r.kind].desc)||"" })),
       armed: p.armed ? { cols: p.armed.cols, ready: p.armed.age >= 1 } : null,
       boardup: p.boardup, territorial: p.territorial,
       handCount: p.hand.length,
-      hand: p.id === viewerId ? p.hand.map(c => ({ id: c.id, card: c.card, name: E.CARDS[c.card] ? E.CARDS[c.card].name : c.card })) : null,
+      hand: p.id === viewerId ? p.hand.map(c => { const d = E.CARDS[c.card]||{}; return { id: c.id, card: c.card, name: d.name||c.card, cls: d.cls||"drawn", desc: d.desc||"" }; }) : null,
     })),
     you: viewerId,
     yourActions: (() => {
@@ -122,7 +122,7 @@ io.on('connection', (socket) => {
     A.apply(g, p, act, target, ratId);
     if (g.over) { broadcast(room); return; }
     // end turn automatically when both actions used or player chose end/draw
-    if (type === 'end' || type === 'draw_instead' || (p._actedAttack && p._actedBuild && !A.legalActions(g, p).some(a => a.type === 'fire'))) {
+    if (type === 'end' || type === 'draw_end' || (p._actedAttack && p._actedBuild && !A.legalActions(g, p).some(a => a.type === 'fire'))) {
       A.endTurn(g);
       runBots(room);
     } else {

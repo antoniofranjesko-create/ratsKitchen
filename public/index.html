@@ -2,121 +2,291 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<title>Rat's Kitchen — v3 test</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Rat's Kitchen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="/socket.io/socket.io.js"></script>
 <style>
-  :root{
-    --ink:#0d0b0a; --paper:#e8dfce; --grime:#1b1714; --stall:#241d18;
-    --red:#c1352b; --blue:#2e6f8e; --green:#5a7d3c; --yellow:#c99a25;
-    --hot:#e0531f; --bone:#cdbfa6; --line:#3a2f27;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{
-    font-family:'Courier New',monospace; background:var(--grime); color:var(--bone);
-    background-image:radial-gradient(circle at 20% 10%,#2a221c 0,transparent 40%),
-                     radial-gradient(circle at 80% 90%,#221a15 0,transparent 45%);
-    min-height:100vh; padding:12px; font-size:14px;
-  }
-  h1{font-family:'Arial Black',sans-serif; letter-spacing:1px; text-transform:uppercase;
-     color:var(--paper); font-size:22px; margin-bottom:4px}
-  h1 span{color:var(--hot)}
-  .sub{color:#8a7a66; font-size:11px; margin-bottom:14px; text-transform:uppercase; letter-spacing:2px}
-  .panel{background:var(--stall); border:1px solid var(--line); border-radius:4px;
-         padding:14px; margin-bottom:12px}
-  button{font-family:inherit; background:var(--red); color:#fff; border:none;
-         padding:8px 14px; border-radius:3px; cursor:pointer; font-weight:bold;
-         text-transform:uppercase; font-size:12px; letter-spacing:1px; margin:3px}
-  button:hover{filter:brightness(1.15)}
-  button.ghost{background:transparent; border:1px solid var(--line); color:var(--bone)}
-  button:disabled{opacity:.35; cursor:not-allowed}
-  input{font-family:inherit; background:var(--ink); color:var(--paper); border:1px solid var(--line);
-        padding:8px; border-radius:3px; font-size:14px; width:140px}
-  .row{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
-  .seats{display:flex; flex-direction:column; gap:8px}
-  .seat{border:1px solid var(--line); border-radius:4px; padding:10px; background:var(--ink);
-        position:relative}
-  .seat.active{border-color:var(--hot); box-shadow:0 0 0 1px var(--hot)}
-  .seat.dead{opacity:.4}
-  .seat.you{border-left:3px solid var(--yellow)}
-  .seat .nm{font-weight:bold; color:var(--paper); text-transform:uppercase; letter-spacing:1px}
-  .stat{display:inline-block; margin-right:12px; font-size:12px}
-  .stat b{color:var(--paper); font-size:15px}
-  .stars{color:var(--hot); letter-spacing:2px}
-  .rats{display:flex; flex-wrap:wrap; gap:4px; margin-top:8px}
-  .rat{font-size:10px; padding:2px 5px; border-radius:2px; border:1px solid #000;
-       color:#fff; white-space:nowrap}
-  .rat.red{background:var(--red)} .rat.blue{background:var(--blue)}
-  .rat.green{background:var(--green)} .rat.yellow{background:var(--yellow); color:#000}
-  .rat.none{background:#555}
-  .badge{font-size:9px; background:#000; color:var(--hot); padding:1px 4px; border-radius:2px;
-         margin-left:4px; text-transform:uppercase}
-  .armed{font-size:10px; color:var(--hot); margin-top:4px}
-  .hand{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
-  .card{background:var(--paper); color:var(--ink); border-radius:3px; padding:8px 10px;
-        min-width:90px; cursor:pointer; border:2px solid #0000; font-size:12px}
-  .card:hover{border-color:var(--hot)}
-  .card .cn{font-weight:bold; text-transform:uppercase; font-size:11px; letter-spacing:.5px}
-  .acts{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px}
-  .log{font-size:11px; color:#9a8a76; max-height:150px; overflow:auto; line-height:1.6}
-  .log div{padding:2px 0; border-bottom:1px solid #2a221c}
-  .win{color:var(--hot); font-weight:bold; text-transform:uppercase; letter-spacing:1px}
-  .tag{font-size:10px; color:#7a6a56; text-transform:uppercase; letter-spacing:1px}
-  .prompt{background:var(--ink); border:1px solid var(--hot); border-radius:4px; padding:12px; margin-top:8px}
-  .hidden{display:none}
-  .key{font-size:10px; color:#7a6a56; margin-top:6px}
+:root{
+  --void:#100c0a; --alley:#171210; --stall:#201813; --stall-lit:#2c211a;
+  --grease:#0b0806; --lamp:#e8a13c; --lamp-dim:#8a6a3a; --lamp-glow:rgba(232,161,60,.16);
+  --bone:#d8cbb4; --bone-dim:#8f8069; --ash:#5c5145;
+  --line:#3a2c22; --line-lit:#5a4330;
+  --red:#cf3a2e; --blue:#3a86a8; --green:#6b9a3f; --yellow:#d8a72a;
+  --c-attack:#c1352b; --c-defence:#2e6f8e; --c-engine:#d1741f;
+  --c-control:#7d4b9e; --c-nerf:#9e2b3f; --c-buff:#5a8a3c; --c-drawn:#6a6055;
+  --danger:#e0531f; --r:3px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Barlow',system-ui,sans-serif; color:var(--bone); background:var(--void);
+  background-image:
+    radial-gradient(ellipse at 18% -5%, rgba(232,161,60,.10) 0, transparent 42%),
+    radial-gradient(ellipse at 85% 105%, rgba(207,58,46,.06) 0, transparent 46%),
+    repeating-linear-gradient(0deg, transparent 0 3px, rgba(0,0,0,.14) 3px 4px);
+  min-height:100vh; overflow-x:hidden;
+}
+h1,h2,h3,.bebas{font-family:'Bebas Neue',sans-serif;font-weight:400;letter-spacing:.5px}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;
+  border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--alley),transparent);
+  position:sticky;top:0;z-index:40;backdrop-filter:blur(4px)}
+.brand{font-family:'Bebas Neue';font-size:26px;letter-spacing:1.5px;color:var(--bone)}
+.brand b{color:var(--lamp);font-weight:400}
+.meta{display:flex;gap:16px;align-items:center;font-family:'Barlow Condensed';font-size:13px;
+  letter-spacing:1px;color:var(--bone-dim);text-transform:uppercase}
+.build{font-size:10px;color:var(--ash);letter-spacing:2px}
+.wrap{max-width:1160px;margin:0 auto;padding:20px 16px 60px}
+.lobby-card{max-width:520px;margin:8vh auto 0;background:var(--stall);border:1px solid var(--line);
+  border-radius:6px;padding:28px;box-shadow:0 30px 80px -30px #000, inset 0 1px 0 rgba(255,255,255,.03)}
+.lobby-card .tag{font-family:'Barlow Condensed';letter-spacing:3px;text-transform:uppercase;
+  color:var(--lamp-dim);font-size:12px;margin-bottom:6px}
+.lobby-card h2{font-size:34px;color:var(--bone);margin-bottom:4px;line-height:1}
+.lobby-sub{color:var(--bone-dim);font-size:14px;margin-bottom:22px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field label{font-family:'Barlow Condensed';letter-spacing:2px;text-transform:uppercase;font-size:11px;color:var(--bone-dim)}
+input{font-family:'Barlow';background:var(--grease);color:var(--bone);border:1px solid var(--line);
+  border-radius:var(--r);padding:11px 12px;font-size:15px;width:100%;transition:border-color .15s}
+input:focus{outline:none;border-color:var(--lamp-dim)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button{font-family:'Barlow Condensed';font-weight:600;letter-spacing:1.5px;text-transform:uppercase;
+  background:var(--lamp);color:var(--grease);border:none;padding:11px 18px;border-radius:var(--r);
+  cursor:pointer;font-size:14px;transition:filter .12s,transform .05s}
+button:hover{filter:brightness(1.12)}
+button:active{transform:translateY(1px)}
+button.ghost{background:transparent;border:1px solid var(--line-lit);color:var(--bone)}
+button.ghost:hover{border-color:var(--lamp-dim);background:rgba(232,161,60,.06)}
+button:disabled{opacity:.35;cursor:not-allowed}
+.divider{display:flex;align-items:center;gap:10px;margin:18px 0;color:var(--ash);
+  font-family:'Barlow Condensed';letter-spacing:2px;font-size:12px}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--line)}
+.lobby-seats{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+.lobby-seat{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--grease);
+  border:1px solid var(--line);border-radius:var(--r);font-family:'Barlow Condensed';letter-spacing:1px;font-size:15px}
+.lobby-seat .dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
+.lobby-seat .bt{margin-left:auto;font-size:11px;color:var(--ash);letter-spacing:2px}
+.err{color:var(--danger);font-size:13px;margin-top:10px;min-height:16px}
+.codebox{font-family:'Bebas Neue';font-size:30px;letter-spacing:4px;color:var(--lamp)}
+.table{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:900px){.table{grid-template-columns:1fr 300px}}
+.stalls{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.stall{position:relative;background:var(--stall);border:1px solid var(--line);border-radius:6px;
+  padding:12px 12px 14px;overflow:hidden;transition:border-color .2s,box-shadow .2s,opacity .2s}
+.stall::before{content:'';position:absolute;top:0;left:0;right:0;height:5px;
+  background:repeating-linear-gradient(90deg,var(--line-lit) 0 14px,var(--stall) 14px 28px);opacity:.5}
+.stall.active{border-color:var(--lamp);box-shadow:0 0 0 1px var(--lamp),0 0 40px -8px var(--lamp-glow);background:var(--stall-lit)}
+.stall.you{border-left:3px solid var(--lamp)}
+.stall.dead{opacity:.4;filter:grayscale(.6)}
+.stall.dead::after{content:'SHUT DOWN';position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;font-family:'Bebas Neue';font-size:28px;letter-spacing:4px;color:var(--danger);
+  background:rgba(16,12,10,.55);transform:rotate(-6deg)}
+.stall.target{cursor:pointer;border-color:var(--danger);box-shadow:0 0 0 1px var(--danger),0 0 30px -10px var(--danger)}
+.stall.target:hover{background:var(--stall-lit)}
+.stall-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.stall-name{font-family:'Bebas Neue';font-size:22px;letter-spacing:1px;color:var(--bone);line-height:1}
+.stall-name .bot{font-family:'Barlow Condensed';font-size:10px;letter-spacing:2px;color:var(--ash);
+  border:1px solid var(--line-lit);border-radius:2px;padding:1px 4px;margin-left:6px;vertical-align:middle}
+.turn-flag{margin-left:auto;font-family:'Barlow Condensed';font-size:11px;letter-spacing:2px;
+  text-transform:uppercase;color:var(--lamp);display:flex;align-items:center;gap:5px}
+.turn-flag .pulse{width:7px;height:7px;border-radius:50%;background:var(--lamp);box-shadow:0 0 8px var(--lamp);animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.stats{display:flex;align-items:center;gap:14px;margin-bottom:10px;flex-wrap:wrap}
+.stars{display:flex;gap:3px}
+.bulb{width:13px;height:13px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff2d0,var(--lamp) 55%,#7a4d18);box-shadow:0 0 8px var(--lamp-glow)}
+.bulb.out{background:#2a211a;box-shadow:none;border:1px solid var(--line)}
+.stat{display:flex;flex-direction:column;gap:1px}
+.stat .k{font-family:'Barlow Condensed';font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--bone-dim)}
+.stat .v{font-family:'Bebas Neue';font-size:20px;line-height:.9;color:var(--bone)}
+.king{flex:1;min-width:120px}
+.king .k{display:flex;justify-content:space-between;font-family:'Barlow Condensed';font-size:9px;
+  letter-spacing:1.5px;text-transform:uppercase;color:var(--bone-dim);margin-bottom:3px}
+.king .k b{color:var(--lamp)}
+.meter{height:9px;background:var(--grease);border:1px solid var(--line);border-radius:20px;overflow:hidden;position:relative}
+.meter .fill{height:100%;background:linear-gradient(90deg,var(--lamp-dim),var(--lamp));transition:width .4s cubic-bezier(.4,0,.2,1)}
+.meter .ticks{position:absolute;inset:0;display:flex}
+.meter .ticks i{flex:1;border-right:1px solid var(--grease)}
+.counter{background:linear-gradient(180deg,var(--grease),transparent);border:1px dashed var(--line);
+  border-radius:var(--r);padding:8px;min-height:52px;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start}
+.counter.empty{align-items:center;justify-content:center}
+.counter.empty::after{content:'no rats';font-family:'Barlow Condensed';letter-spacing:2px;
+  text-transform:uppercase;font-size:11px;color:var(--ash)}
+.rat{position:relative;width:46px;height:58px;border-radius:var(--r);background:var(--stall-lit);
+  border:1px solid #000;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,.4);flex:0 0 auto}
+.rat .band{height:5px;width:100%}
+.rat.red .band{background:var(--red)} .rat.blue .band{background:var(--blue)}
+.rat.green .band{background:var(--green)} .rat.yellow .band{background:var(--yellow)}
+.rat.none .band{background:repeating-linear-gradient(45deg,#555 0 3px,#333 3px 6px)}
+.rat .art{height:30px;display:flex;align-items:center;justify-content:center;font-size:20px;filter:grayscale(1) brightness(1.3);opacity:.85}
+.rat .nm{font-family:'Barlow Condensed';font-size:8px;letter-spacing:.3px;text-align:center;color:var(--bone-dim);
+  line-height:1;padding:0 1px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rat .corners{position:absolute;bottom:2px;left:0;right:0;display:flex;justify-content:space-between;padding:0 3px}
+.rat .corners span{font-family:'Bebas Neue';font-size:11px;line-height:1}
+.rat .w{color:var(--lamp)} .rat .h{color:var(--danger)}
+.rat.multi{box-shadow:0 0 0 1px var(--lamp),0 2px 4px rgba(0,0,0,.4)}
+.rat.alpha .art{color:var(--lamp)}
+.pips{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;min-height:18px}
+.pip{font-family:'Barlow Condensed';font-size:10px;letter-spacing:1px;text-transform:uppercase;
+  padding:2px 7px;border-radius:20px;border:1px solid var(--line-lit);color:var(--bone-dim)}
+.pip.armed{color:var(--danger);border-color:var(--danger)}
+.pip.armed.ready{background:rgba(224,83,31,.14)}
+.pip.board{color:var(--blue);border-color:var(--blue)}
+.pip.terr{color:var(--c-control);border-color:var(--c-control)}
+.pip.hand{color:var(--bone-dim)}
+.inspcol{display:inline-block;width:9px;height:9px;border-radius:2px;border:1px solid #000;margin-left:2px;vertical-align:middle}
+.inspcol.red{background:var(--red)} .inspcol.blue{background:var(--blue)}
+.inspcol.green{background:var(--green)} .inspcol.yellow{background:var(--yellow)}
+.rail{display:flex;flex-direction:column;gap:12px}
+.panel{background:var(--stall);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.panel-h{font-family:'Barlow Condensed';letter-spacing:2px;text-transform:uppercase;font-size:11px;
+  color:var(--lamp-dim);padding:9px 12px;border-bottom:1px solid var(--line);background:var(--grease)}
+.log{font-family:'JetBrains Mono';font-size:11px;line-height:1.65;color:var(--bone-dim);padding:10px 12px;max-height:340px;overflow:auto}
+.log div{padding:3px 0;border-bottom:1px solid rgba(58,44,34,.5)}
+.log div:last-child{border:none;color:var(--bone)}
+.pool{display:flex;gap:14px;padding:12px;font-family:'Barlow Condensed';letter-spacing:1px}
+.pool .b{display:flex;flex-direction:column}
+.pool .b .k{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--bone-dim)}
+.pool .b .v{font-family:'Bebas Neue';font-size:24px;color:var(--bone);line-height:1}
+.dock{position:sticky;bottom:0;z-index:30;margin-top:14px;
+  background:linear-gradient(0deg,var(--alley) 70%,transparent);border-top:1px solid var(--line);padding:12px 16px 16px}
+.dock-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.dock-h .lbl{font-family:'Barlow Condensed';letter-spacing:2px;text-transform:uppercase;font-size:11px;color:var(--lamp-dim)}
+.dock-h .prompt{font-family:'Barlow Condensed';letter-spacing:1px;font-size:14px;color:var(--lamp)}
+.hand{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.pcard{flex:0 0 auto;width:132px;min-height:186px;border-radius:6px;background:var(--stall-lit);
+  position:relative;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.45);cursor:pointer;
+  border:2px solid var(--c-drawn);transition:transform .1s,box-shadow .15s}
+.pcard:hover{transform:translateY(-3px);box-shadow:0 8px 18px rgba(0,0,0,.5)}
+.pcard.sel{transform:translateY(-6px);box-shadow:0 0 0 2px var(--lamp),0 10px 22px rgba(0,0,0,.55)}
+/* full-frame category colour */
+.pcard.attack{border-color:var(--c-attack)} .pcard.defence{border-color:var(--c-defence)}
+.pcard.engine{border-color:var(--c-engine)} .pcard.control{border-color:var(--c-control)}
+.pcard.nerf{border-color:var(--c-nerf)} .pcard.buff{border-color:var(--c-buff)}
+.pcard.drawn{border-color:var(--c-drawn)}
+.pcard .top{height:22px;display:flex;align-items:center;padding:0 8px;font-family:'Barlow Condensed';
+  font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#fff}
+.pcard.attack .top{background:var(--c-attack)} .pcard.defence .top{background:var(--c-defence)}
+.pcard.engine .top{background:var(--c-engine)} .pcard.control .top{background:var(--c-control)}
+.pcard.nerf .top{background:var(--c-nerf)} .pcard.buff .top{background:var(--c-buff)}
+.pcard.drawn .top{background:var(--c-drawn)}
+.pcard .cname{font-family:'Bebas Neue';font-size:17px;line-height:.95;letter-spacing:.5px;color:var(--bone);padding:7px 8px 2px}
+.pcard .art{height:40px;display:flex;align-items:center;justify-content:center;font-size:26px;opacity:.5;filter:grayscale(1)}
+.pcard .cdesc{font-family:'Barlow';font-size:9.5px;line-height:1.3;color:var(--bone-dim);
+  padding:4px 8px 8px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+/* inspection cards get an inner band showing the TARGET colour(s) */
+.pcard .inspband{display:flex;height:5px;margin:0 8px 6px;border-radius:3px;overflow:hidden;border:1px solid #000}
+.pcard .inspband i{flex:1}
+.pcard .inspband i.red{background:var(--red)} .pcard .inspband i.blue{background:var(--blue)}
+.pcard .inspband i.green{background:var(--green)} .pcard .inspband i.yellow{background:var(--yellow)}
+.pcard .inspband i.any{background:repeating-linear-gradient(45deg,#888 0 3px,#444 3px 6px)}
+/* info popover */
+.cardinfo{position:fixed;inset:0;z-index:70;background:rgba(16,12,10,.86);backdrop-filter:blur(4px);
+  display:flex;align-items:center;justify-content:center;padding:24px}
+.cardinfo .box{background:var(--stall);border:2px solid var(--lamp);border-radius:8px;max-width:340px;
+  padding:0;overflow:hidden;box-shadow:0 30px 80px -20px #000}
+.cardinfo .box .top{height:30px;display:flex;align-items:center;padding:0 14px;font-family:'Barlow Condensed';
+  letter-spacing:2px;text-transform:uppercase;font-size:11px;color:#fff}
+.cardinfo .box h3{font-family:'Bebas Neue';font-size:26px;letter-spacing:.5px;color:var(--bone);padding:12px 14px 4px}
+.cardinfo .box p{font-family:'Barlow';font-size:14px;line-height:1.5;color:var(--bone);padding:0 14px 14px}
+.cardinfo .box .foot{display:flex;gap:8px;padding:0 14px 14px}
+.cardinfo .box .foot button{flex:1}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.actions button{font-size:13px;padding:9px 14px}
+.actions .fire{background:var(--danger);color:#fff}
+.actions .end{background:transparent;border:1px solid var(--line-lit);color:var(--bone-dim)}
+.actions .info{background:transparent;border:1px solid var(--lamp-dim);color:var(--lamp)}
+.picker-bar{position:sticky;top:56px;z-index:35;background:var(--danger);color:#fff;
+  font-family:'Barlow Condensed';letter-spacing:1px;font-size:14px;padding:8px 16px;
+  display:flex;align-items:center;justify-content:space-between}
+.picker-bar button{background:rgba(0,0,0,.25);color:#fff;padding:5px 12px;font-size:12px}
+.winner{position:fixed;inset:0;z-index:60;background:rgba(16,12,10,.9);backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;text-align:center}
+.winner h2{font-size:64px;color:var(--lamp);letter-spacing:2px;text-shadow:0 0 40px var(--lamp-glow)}
+.winner .sub{font-family:'Barlow Condensed';letter-spacing:3px;text-transform:uppercase;color:var(--bone-dim)}
+.hidden{display:none!important}
+::-webkit-scrollbar{height:8px;width:8px}
+::-webkit-scrollbar-thumb{background:var(--line-lit);border-radius:8px}
+::-webkit-scrollbar-track{background:transparent}
+@media (max-height:560px){
+  .dock{position:static;background:var(--alley)}
+  .stalls{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+  .log{max-height:180px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<h1>Rat's <span>Kitchen</span></h1>
-<div class="sub">v3 playtest build · first to weight 5 rules the market</div>
-
-<!-- LOBBY -->
-<div id="lobby" class="panel">
-  <div class="row">
-    <input id="name" placeholder="Your name" />
-    <button id="btnCreate">Create table</button>
-    <span class="tag">or</span>
-    <input id="code" placeholder="Code" maxlength="4" style="width:90px;text-transform:uppercase" />
-    <button id="btnJoin" class="ghost">Join</button>
-  </div>
-  <div id="roomBox" class="hidden" style="margin-top:12px">
-    <div class="tag">Table <b id="roomCode" style="color:var(--paper)"></b> — share the code</div>
-    <div id="roomPlayers" class="seats" style="margin-top:8px"></div>
-    <div class="row" style="margin-top:8px">
-      <button id="btnBot" class="ghost">+ Add bot</button>
-      <button id="btnStart">Start game</button>
-    </div>
-    <div class="key">2–8 players. Bots play the tuned strategy.</div>
-  </div>
-  <div id="errBox" style="color:var(--hot);margin-top:8px"></div>
+<div class="topbar">
+  <div class="brand">RAT'S <b>KITCHEN</b></div>
+  <div class="meta"><span class="build">BUILD v3.0.0</span></div>
 </div>
 
-<!-- GAME -->
-<div id="game" class="hidden">
-  <div class="panel">
-    <div class="row" style="justify-content:space-between">
-      <div class="tag">Turn <b id="turnNo" style="color:var(--paper)"></b> · Bins holds <b id="binsN" style="color:var(--paper)"></b> rats · Deck <b id="deckN" style="color:var(--paper)"></b></div>
-      <div id="banner" class="win"></div>
+<div id="lobby" class="wrap">
+  <div class="lobby-card">
+    <div class="tag">Unlicensed · after dark</div>
+    <h2>Run the night market</h2>
+    <div class="lobby-sub">Farm the vermin. Dodge the inspector. First to rat-king weight rules the alley.</div>
+    <div id="joinForms">
+      <div class="field"><label for="name">Your name</label><input id="name" placeholder="e.g. Sly" maxlength="16"/></div>
+      <div class="row"><button id="btnCreate">Open a table</button></div>
+      <div class="divider">or join one</div>
+      <div class="row"><input id="code" placeholder="CODE" maxlength="4" style="text-transform:uppercase;flex:1"/><button id="btnJoin" class="ghost">Join</button></div>
+      <div id="errBox" class="err"></div>
+    </div>
+    <div id="roomBox" class="hidden">
+      <div class="row" style="justify-content:space-between;align-items:baseline">
+        <div><div class="tag">Table code</div><div class="codebox" id="roomCode"></div></div>
+        <div class="tag">Share it to let others in</div>
+      </div>
+      <div id="roomPlayers" class="lobby-seats"></div>
+      <div class="row"><button id="btnBot" class="ghost">+ Add bot</button><button id="btnStart">Start game</button></div>
+      <div class="tag" style="margin-top:10px">2–8 players · bots play the tuned strategy</div>
     </div>
   </div>
-  <div id="seats" class="seats"></div>
-  <div class="panel">
-    <div class="tag">Your hand</div>
-    <div id="hand" class="hand"></div>
-    <div id="actions" class="acts"></div>
-    <div id="targetPrompt" class="prompt hidden"></div>
+</div>
+
+<div id="game" class="hidden">
+  <div id="pickerBar" class="picker-bar hidden">
+    <span id="pickerMsg">Choose a target</span><button id="pickerCancel">Cancel</button>
   </div>
-  <div class="panel">
-    <div class="tag">Kitchen log</div>
-    <div id="log" class="log"></div>
+  <div class="wrap">
+    <div class="table">
+      <div id="stalls" class="stalls"></div>
+      <div class="rail">
+        <div class="panel"><div class="panel-h">The bins &amp; deck</div>
+          <div class="pool">
+            <div class="b"><span class="k">Bins (rats)</span><span class="v" id="binsN">0</span></div>
+            <div class="b"><span class="k">Deck left</span><span class="v" id="deckN">0</span></div>
+            <div class="b"><span class="k">Turn</span><span class="v" id="turnN">0</span></div>
+          </div>
+        </div>
+        <div class="panel"><div class="panel-h">Kitchen log</div><div class="log" id="log"></div></div>
+      </div>
+    </div>
   </div>
+  <div class="dock">
+    <div class="dock-h"><span class="lbl">Your hand</span><span class="prompt" id="dockPrompt"></span></div>
+    <div class="hand" id="hand"></div>
+    <div class="actions" id="actions"></div>
+  </div>
+</div>
+
+<div id="winner" class="winner hidden">
+  <div class="sub">The alley has a new king</div>
+  <h2 id="winnerName"></h2>
+  <div class="sub" id="winnerHow"></div>
 </div>
 
 <script>
 const socket = io();
-let YOU=null, STATE=null, pending=null;
+let YOU=null, STATE=null, picking=null, selectedCardId=null;
 const $=id=>document.getElementById(id);
+const RAT_ART={plain:'🐀',runner:'🐀',fat:'🐀',sow:'🐀',alpha:'👑',sewer:'🐀',toll:'🐀',feral:'🐀',spice:'🐀',boiler:'🐀',larder:'🐀'};
+const CARD_ART={mole:'🦫',sched1:'🦅',sched2:'🦅',poach:'🎣',ratato:'🥔',switch:'🔄',chilli:'🌶️',territorial:'🚧',grease:'💰',food:'🍜',cat:'🐱',wok:'🍳',boardup:'🔨',rattrap:'🪤',trojan:'📦',delivery:'🚚',wd_release:'🗑️',exterm:'🧯',misc:'🎲'};
+const CARD_CLS={mole:'attack',sched1:'attack',sched2:'attack',poach:'attack',ratato:'attack',switch:'attack',chilli:'attack',territorial:'control',grease:'attack',food:'buff',cat:'defence',wok:'defence',boardup:'defence',rattrap:'engine',trojan:'engine',delivery:'engine',wd_release:'drawn',exterm:'engine',misc:'drawn'};
+const CARD_TYPE={attack:'Attack',defence:'Defence',engine:'Engine',control:'Control',nerf:'Nerf',buff:'Buff',drawn:'When drawn'};
 
 $('btnCreate').onclick=()=>socket.emit('create',{name:$('name').value.trim()});
 $('btnJoin').onclick=()=>socket.emit('join',{code:$('code').value.trim().toUpperCase(),name:$('name').value.trim()});
@@ -125,111 +295,185 @@ $('btnStart').onclick=()=>socket.emit('start');
 
 socket.on('room',r=>{
   if(r.you) YOU=r.you;
+  $('joinForms').classList.add('hidden');
   $('roomBox').classList.remove('hidden');
-  $('roomCode').textContent=r.code;
+  if(r.code) $('roomCode').textContent=r.code;
   $('roomPlayers').innerHTML=r.players.map(p=>
-    `<div class="seat"><span class="nm">${p.name}</span> ${p.bot?'<span class="tag">bot</span>':''}</div>`).join('');
+    `<div class="lobby-seat"><span class="dot"></span>${esc(p.name)}${p.bot?'<span class="bt">BOT</span>':(p.id===YOU?'<span class="bt">YOU</span>':'')}</div>`).join('');
 });
-socket.on('err',m=>{$('errBox').textContent=m; setTimeout(()=>$('errBox').textContent='',3000)});
-socket.on('begin',()=>{$('lobby').classList.add('hidden'); $('game').classList.remove('hidden')});
-socket.on('state',s=>{STATE=s; render()});
-
-const COLK={red:'red',blue:'blue',green:'green',yellow:'yellow'};
-function ratChip(r){
-  const c=r.col?COLK[r.col]:'none';
-  const p=r.prop?`<span class="badge">${propShort(r.prop)}</span>`:'';
-  return `<span class="rat ${c}">${r.name} ${r.w}w/${r.heat}h${p}</span>`;
-}
-function propShort(p){return{draw_again:'run',extra_draw:'sow',tax:'toll',no_dump:'feral',
-  no_explode:'spice',no_steal:'boiler',free_eat:'larder'}[p]||p}
+socket.on('err',m=>{$('errBox').textContent=m;setTimeout(()=>$('errBox').textContent='',3500)});
+socket.on('begin',()=>{$('lobby').classList.add('hidden');$('game').classList.remove('hidden')});
+socket.on('state',s=>{STATE=s;render()});
+function esc(x){return String(x).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
 
 function render(){
   if(!STATE) return;
-  $('turnNo').textContent=STATE.turn;
   $('binsN').textContent=STATE.binsRats;
   $('deckN').textContent=STATE.deckLeft;
-  // seats
-  $('seats').innerHTML=STATE.players.map(p=>{
-    const cls=['seat'];
-    if(p.id===STATE.active) cls.push('active');
-    if(!p.alive) cls.push('dead');
-    if(p.id===YOU) cls.push('you');
-    const stars='★'.repeat(Math.max(0,p.stars))+'☆'.repeat(Math.max(0,3-p.stars));
-    const armed=p.armed?`<div class="armed">⚑ armed inspection [${p.armed.cols.join('/')}] ${p.armed.ready?'READY':'arming'}</div>`:'';
-    const flags=[p.boardup?'boarded up':'',p.territorial?'territorial':''].filter(Boolean).join(' · ');
-    return `<div class="${cls.join(' ')}">
-      <div><span class="nm">${p.name}</span> ${p.bot?'<span class="tag">bot</span>':''} ${p.id===STATE.active?'<span class="tag">— to act</span>':''}</div>
-      <div style="margin-top:6px">
-        <span class="stat stars">${stars}</span>
-        <span class="stat">WEIGHT <b>${p.weight}</b>/5</span>
-        <span class="stat">rats <b>${p.count}</b></span>
-        <span class="stat">heat <b>${p.heat}</b></span>
-        <span class="stat">hand <b>${p.handCount}</b></span>
-      </div>
-      ${flags?`<div class="tag" style="margin-top:4px">${flags}</div>`:''}
-      ${armed}
-      <div class="rats">${p.rats.map(ratChip).join('')}</div>
+  $('turnN').textContent=STATE.turn;
+  const meActive = STATE.active===YOU && !STATE.over;
+  $('stalls').innerHTML=STATE.players.map(p=>stallHTML(p)).join('');
+  if(picking){
+    $('pickerBar').classList.remove('hidden');
+    $('pickerMsg').textContent=picking.msg;
+    picking.targets.forEach(tid=>{
+      const el=document.querySelector('.stall[data-id="'+tid+'"]');
+      if(el){el.classList.add('target');el.onclick=()=>{const a=picking.act;picking=null;$('pickerBar').classList.add('hidden');send(a,tid,null);};}
+    });
+  }else $('pickerBar').classList.add('hidden');
+  const me=STATE.players.find(p=>p.id===YOU);
+  $('hand').innerHTML=(me&&me.hand||[]).map((c,i)=>{
+    const cls=c.cls||CARD_CLS[c.card]||'drawn';
+    const band=inspBand(c.card);
+    const short=shortDesc(c.desc);
+    return `<div class="pcard ${cls} ${selectedCardId===c.id?'sel':''}" data-cid="${c.id}" data-ci="${i}">
+      <div class="top">${CARD_TYPE[cls]}</div>
+      <div class="cname">${esc(c.name)}</div>
+      <div class="art">${CARD_ART[c.card]||'🎴'}</div>
+      ${band}
+      <div class="cdesc">${esc(short)}</div>
     </div>`;
-  }).join('');
-  // banner
+  }).join('')||'<div class="ctype" style="color:var(--ash);padding:20px">no cards in hand</div>';
+  // wire card taps -> select + reveal its actions
+  [...document.querySelectorAll('.pcard[data-cid]')].forEach(el=>{
+    el.onclick=()=>{ selectedCardId = (selectedCardId===el.dataset.cid)?null:el.dataset.cid; render(); };
+  });
+  $('dockPrompt').textContent = STATE.over ? '' : (meActive ? 'Your turn — play a card or act' : waitingMsg());
+  renderActions(meActive);
+  $('log').innerHTML=STATE.log.map(l=>`<div>${esc(l)}</div>`).join('');
+  $('log').scrollTop=$('log').scrollHeight;
   if(STATE.over){
     const w=STATE.players.find(p=>p.id===STATE.winner);
-    $('banner').textContent=w?`${w.name} wins!`:'Game over';
-  } else $('banner').textContent='';
-  // hand
-  const me=STATE.players.find(p=>p.id===YOU);
-  $('hand').innerHTML=(me&&me.hand||[]).map(c=>`<div class="card"><div class="cn">${c.name}</div></div>`).join('')||'<span class="tag">no cards</span>';
-  // actions
-  renderActions();
-  // log
-  $('log').innerHTML=STATE.log.map(l=>`<div>${l}</div>`).join('');
-  $('log').scrollTop=$('log').scrollHeight;
+    $('winner').classList.remove('hidden');
+    $('winnerName').textContent=w?w.name:'Nobody';
+    $('winnerHow').textContent=w?(w.weight>=STATE.threshold?`Rat King · weight ${w.weight}`:'Last stall standing'):'';
+  }else $('winner').classList.add('hidden');
 }
-
-function renderActions(){
-  const box=$('actions'); const prompt=$('targetPrompt');
-  prompt.classList.add('hidden'); prompt.innerHTML='';
-  if(!STATE || STATE.over || STATE.active!==YOU){ box.innerHTML=''; return; }
+function waitingMsg(){const a=STATE.players.find(p=>p.id===STATE.active);return a?`Waiting on ${a.name}…`:''}
+function stallHTML(p){
+  const cls=['stall'];
+  if(p.id===STATE.active&&!STATE.over) cls.push('active');
+  if(p.id===YOU) cls.push('you');
+  if(!p.alive) cls.push('dead');
+  const bulbs=Array.from({length:3},(_,i)=>`<span class="bulb ${i<p.stars?'':'out'}"></span>`).join('');
+  const pct=Math.min(100,(p.weight/STATE.threshold)*100);
+  const ticks=Array.from({length:STATE.threshold},()=>'<i></i>').join('');
+  const rats=p.rats.length?`<div class="counter">${p.rats.map(ratHTML).join('')}</div>`:`<div class="counter empty"></div>`;
+  const pips=[];
+  if(p.armed){
+    const own = p.id===YOU;
+    const colBand = p.armed.cols.map(c=>`<span class="inspcol ${c}"></span>`).join('');
+    pips.push(`<span class="pip armed ${p.armed.ready?'ready':''}">⚑ ${own?'YOUR inspector':'inspector'} ${p.armed.ready?'ready':'arming'} ${colBand}</span>`);
+  }
+  if(p.boardup) pips.push('<span class="pip board">boarded up</span>');
+  if(p.territorial) pips.push('<span class="pip terr">territorial</span>');
+  pips.push(`<span class="pip hand">${p.handCount} cards</span>`);
+  const turnflag=(p.id===STATE.active&&!STATE.over)?'<span class="turn-flag"><span class="pulse"></span>to act</span>':'';
+  return `<div class="${cls.join(' ')}" data-id="${p.id}">
+    <div class="stall-head"><span class="stall-name">${esc(p.name)}${p.bot?'<span class="bot">BOT</span>':''}</span>${turnflag}</div>
+    <div class="stats">
+      <div class="stat"><span class="k">Stars</span><span class="stars">${bulbs}</span></div>
+      <div class="king"><div class="k"><span>Rat King</span><b>${p.weight} / ${STATE.threshold}</b></div>
+        <div class="meter"><div class="fill" style="width:${pct}%"></div><div class="ticks">${ticks}</div></div></div>
+      <div class="stat"><span class="k">Heat</span><span class="v">${p.heat}</span></div>
+    </div>
+    ${rats}
+    <div class="pips">${pips.join('')}</div>
+  </div>`;
+}
+function colDot(c){const m={red:'🔴',blue:'🔵',green:'🟢',yellow:'🟡'};return m[c]||'⚪'}
+function ratHTML(r){
+  const col=r.col||'none';const cls=['rat',col];
+  if(r.kind==='alpha') cls.push('alpha');
+  if(r.cols&&r.cols.length>1) cls.push('multi');
+  return `<div class="${cls.join(' ')}" title="${esc(r.name)} · weight ${r.w} · heat ${r.heat}">
+    <div class="band"></div><div class="art">${RAT_ART[r.kind]||'🐀'}</div>
+    <div class="nm">${esc(shortName(r.name))}</div>
+    <div class="corners"><span class="w">${r.w}</span><span class="h">${r.heat}</span></div></div>`;
+}
+function shortName(n){return n.replace(/ Rat$/,'').replace(/^The /,'')}
+function renderActions(meActive){
+  const box=$('actions');
+  if(!meActive||picking){box.innerHTML='';return;}
   const acts=STATE.yourActions||[];
-  box.innerHTML=acts.map((a,i)=>`<button data-i="${i}">${a.label}</button>`).join('');
-  [...box.querySelectorAll('button')].forEach(b=>{
-    b.onclick=()=>chooseAction(acts[+b.dataset.i]);
-  });
-}
-
-function chooseAction(a){
-  if(a.needsRat){
+  // split into card-bound actions vs free actions (fire/eat/food_heal/end/draw_end)
+  const free=acts.filter(a=>!a.id);
+  let html='';
+  if(selectedCardId){
     const me=STATE.players.find(p=>p.id===YOU);
-    showPrompt('Choose a rat to eat:',
-      me.rats.map((r,i)=>({label:`${r.name} (${r.w}w)`, cb:()=>send(a,null,ratIdByIndex(i))})));
-    return;
+    const card=me&&me.hand&&me.hand.find(c=>c.id===selectedCardId);
+    const cardActs=acts.filter(a=>a.id===selectedCardId);
+    if(card){
+      html+=`<button class="info" data-info="1">ⓘ ${esc(card.name)} — details</button>`;
+      if(cardActs.length){
+        html+=cardActs.map((a,i)=>`<button data-ci="${i}">${esc(playVerb(a,card))}</button>`).join('');
+      }else{
+        html+=`<span style="font-family:'Barlow Condensed';letter-spacing:1px;color:var(--ash);align-self:center;padding:0 6px">can't play this right now</span>`;
+      }
+      html+=`<button class="end" data-desel="1">Back</button>`;
+      box.innerHTML=html;
+      box.querySelector('[data-info]')&&(box.querySelector('[data-info]').onclick=()=>showCardInfo(card));
+      box.querySelector('[data-desel]')&&(box.querySelector('[data-desel]').onclick=()=>{selectedCardId=null;render();});
+      [...box.querySelectorAll('[data-ci]')].forEach(b=>b.onclick=()=>choose(cardActs[+b.dataset.ci]));
+      return;
+    }
   }
-  if(a.needsTarget){
-    showPrompt('Choose a target:',
-      a.targets.map(tid=>{
-        const t=STATE.players.find(p=>p.id===tid);
-        return {label:t?t.name:tid, cb:()=>send(a,tid,null)};
-      }));
-    return;
-  }
+  // no card selected: show free actions + a hint
+  html+=`<span style="font-family:'Barlow Condensed';letter-spacing:1px;color:var(--bone-dim);align-self:center;padding:0 6px">tap a card to play it${free.length?', or:':''}</span>`;
+  html+=free.map((a,i)=>{
+    let cls=''; if(a.type==='fire')cls='fire'; if(a.type==='end'||a.type==='draw_end')cls='end';
+    return `<button class="${cls}" data-fi="${i}">${esc(a.label)}</button>`;
+  }).join('');
+  box.innerHTML=html;
+  [...box.querySelectorAll('[data-fi]')].forEach(b=>b.onclick=()=>choose(free[+b.dataset.fi]));
+}
+function playVerb(a,card){
+  // friendlier verb than the raw label when a card is already selected
+  const map={mole:'Inspect (snap, -1 star)',sched1:'Arm inspection',sched2:'Arm 2-colour inspection',
+    poach:'Poach a rat',ratato:'Dump a rat',switch:'Swap a rat',chilli:'Explode a rat',
+    territorial:'Mark territorial',grease:'Grease their inspector',boardup:'Board up',
+    rattrap:'Set trap',trojan:'Plant in a rival',delivery:'Take from bins',exterm:'Exterminate',misc:'Do the odd job'};
+  return map[a.type]||a.label;
+}
+function showCardInfo(card){
+  const cls=card.cls||'drawn';
+  const wrap=document.createElement('div');
+  wrap.className='cardinfo';
+  wrap.innerHTML=`<div class="box">
+    <div class="top ${cls}" style="background:var(--c-${cls})">${CARD_TYPE[cls]||''}</div>
+    <h3>${esc(card.name)}</h3>
+    <p>${esc(card.desc||'No extra detail.')}</p>
+    <div class="foot"><button data-close="1">Close</button></div>
+  </div>`;
+  wrap.onclick=e=>{ if(e.target===wrap||e.target.dataset.close) wrap.remove(); };
+  document.body.appendChild(wrap);
+}
+function inspBand(cardKey){
+  // show target colour band under inspection cards. Actual colours are chosen on arming,
+  // so the card face shows 'any of 4' for scheduled and 'colour-blind' for the mole snap.
+  if(cardKey==='mole') return `<div class="inspband"><i class="any"></i></div>`;
+  if(cardKey==='sched1'||cardKey==='sched2') return `<div class="inspband"><i class="red"></i><i class="blue"></i><i class="green"></i><i class="yellow"></i></div>`;
+  return '';
+}
+function shortDesc(d){
+  if(!d) return '';
+  // first sentence, capped
+  const s=d.split('.')[0];
+  return s.length>60? s.slice(0,58)+'…' : s+'.';
+}
+function choose(a){
+  if(a.needsTarget){picking={act:a,targets:a.targets,msg:pickMsg(a)};selectedCardId=null;render();return;}
+  selectedCardId=null;
   send(a,null,null);
 }
-// NOTE: server resolves rat choice by weight; ratId not strictly needed for eat in this build
-function ratIdByIndex(){return null;}
-
-function showPrompt(title,opts){
-  const p=$('targetPrompt'); p.classList.remove('hidden');
-  p.innerHTML=`<div class="tag">${title}</div><div class="acts" id="promptOpts"></div>`;
-  const box=$('promptOpts');
-  opts.forEach(o=>{const b=document.createElement('button'); b.className='ghost'; b.textContent=o.label; b.onclick=o.cb; box.appendChild(b);});
-  const cancel=document.createElement('button'); cancel.className='ghost'; cancel.textContent='Cancel';
-  cancel.onclick=()=>{p.classList.add('hidden');}; box.appendChild(cancel);
+function pickMsg(a){
+  const verb={mole:'Inspect',fire:'Fire inspection on',poach:'Poach from',ratato:'Dump a rat onto',
+    switch:'Swap with',chilli:'Explode a rat in',territorial:'Mark',grease:'Grease',
+    trojan:'Plant a rat in',rattrap:'Trap'}[a.type]||'Target';
+  return verb+' — click a stall';
 }
-
-function send(a,target,ratId){
-  socket.emit('act',{type:a.type,id:a.id,target,ratId});
-  $('targetPrompt').classList.add('hidden');
-}
+$('pickerCancel').onclick=()=>{picking=null;render()};
+function send(a,target,ratId){socket.emit('act',{type:a.type,id:a.id,target,ratId})}
 </script>
 </body>
 </html>
