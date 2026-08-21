@@ -1,6 +1,6 @@
 {
   "name": "rats-kitchen-v3",
-  "version": "3.0.0",
+  "version": "3.1.1",
   "description": "Rat's Kitchen v3 — online playtest prototype",
   "main": "server.js",
   "scripts": {

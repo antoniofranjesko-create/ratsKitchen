@@ -156,7 +156,10 @@ function legalActions(g, p) {
     // ---- gambit: scry top 3 ----
     if (t === 'gambit' && !p._actedBuild && g.deck.length)
       push({ id: c.id, type: t, label: 'Gambit (look at top 3)' });
-    // Inheritance is passive (fires on elimination) — not a played action.
+    if (t === 'inherit' && !p._actedBuild) {
+      const vics = opps.filter(o => !o._inheritBy);
+      if (vics.length) push({ id: c.id, type: t, needsTarget: true, targets: vics.map(o => o.id), label: 'Inheritance (place on a rival)' });
+    }
   }
 
   // fire armed inspection (free, any time on your turn)
@@ -325,6 +328,7 @@ const theirs = t.rats.filter(r => r.prop !== 'no_steal').sort((a, b) => b.w - a.
       p._actedBuild = true;
       E.logAdd(g, `${p.name} plays Gambit and digs through the deck.`); break;
     }
+    case 'inherit': { bin(takeCard(act.id)); t._inheritBy = p.id; p._actedBuild = true; E.logAdd(g, `${p.name} places Inheritance on ${t.name}.`); break; }
     case 'sow_draw': {
       p._sowUsed = true;
       const c = E.drawCard(g);
@@ -423,6 +427,7 @@ function botChoose(g, p, acts) {
   }
   // 8. otherwise do a small build or just end
   if (has('play_ratato')) return has('play_ratato');
+  if (has('inherit') && lead) return has('inherit');
   if (has('gambit')) return has('gambit');
   if (has('klepto')) return has('klepto');
   if (has('sow_draw')) return has('sow_draw');

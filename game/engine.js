@@ -50,7 +50,7 @@ const CARDS = {
   trashdiver:  { name: 'Trash Diver',     cls: 'engine', desc: 'Take any one of the last 3 discarded cards from the bins.' },
   rattrap:     { name: 'Rat Trap',        cls: 'engine', desc: 'The next rat that would enter the trapped kitchen is caught and sent to the bins.' },
   exterm:      { name: 'Exterminator',    cls: 'engine', desc: 'Instantly remove one of your own rats (your hottest) to the bins — cool your heat.' },
-  inherit:     { name: 'Inheritance',     cls: 'engine', desc: 'When a rival is shut down, take 2 of their cards at random.' },
+  inherit:     { name: 'Inheritance',     cls: 'engine', desc: 'Place on a rival. If THAT rival is later shut down, you take 2 of their cards at random.' },
   gambit:      { name: 'Gambit',          cls: 'drawn', desc: 'Look at the top 3 cards of the deck. Keep 1; put the other 2 back on top (you know what they are).' },
   wd_release:  { name: 'WD: Rat Release', cls: 'drawn', desc: 'When drawn, fires at once. The top bins rat escapes to the kitchen holding most of its colour. Cannot be held.' },
 };
@@ -269,19 +269,16 @@ function damage(g, t, d) {
   if (t.stars <= 0) eliminate(g, t);
 }
 function eliminate(g, t) {
-  // Inheritance: any ALIVE player holding an Inheritance card takes 2 of the
-  // eliminated player's cards at random (before they hit the bins).
-  for (const q of g.players) {
-    if (!q.alive || q.id === t.id) continue;
-    const inh = q.hand.findIndex(c => c.card === 'inherit');
-    if (inh >= 0 && t.hand.length) {
-      q.hand.splice(inh, 1); g.bins.push({ id: rid(), card: 'inherit' });
+  // Inheritance: whoever PLACED an Inheritance marker on this specific
+  // player takes 2 of their cards at random when they fall.
+  if (t._inheritBy) {
+    const q = g.players.find(x => x.id === t._inheritBy);
+    if (q && q.alive) {
       for (let k = 0; k < 2 && t.hand.length; k++) {
         const i = Math.floor(Math.random() * t.hand.length);
         q.hand.push(t.hand.splice(i, 1)[0]);
       }
-      logAdd(g, `${q.name} inherits from ${t.name}'s fallen stall.`);
-      break;
+      logAdd(g, `${q.name}'s Inheritance pays off — they take from ${t.name}'s fallen stall.`);
     }
   }
   t.alive = false;

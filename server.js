@@ -63,7 +63,7 @@ function broadcast(room) {
 function runBots(room) {
   const g = room.game;
   let guard = 0;
-  while (!g.over && guard++ < 400) {
+  while (!g.over && guard++ < 5000) {
     const act = g.players[g.active];
     A.startTurn(g);
     if (g.over) break;
@@ -75,6 +75,9 @@ function runBots(room) {
       broadcast(room);
       return; // wait for human input
     }
+  }
+  if (!g.over && guard >= 5000) {
+    E.logAdd(g, 'Turn limit reached — this should not happen; please report.');
   }
   broadcast(room);
 }
@@ -170,7 +173,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const VERSION = '3.1.0';
+const VERSION = '3.1.1';
 app.get('/version', (req, res) => res.json({ version: VERSION }));
 
 const PORT = process.env.PORT || 3000;

@@ -225,7 +225,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 <body>
 <div class="topbar">
   <div class="brand">RAT'S <b>KITCHEN</b></div>
-  <div class="meta"><span class="build">BUILD v3.1.0</span></div>
+  <div class="meta"><span class="build">BUILD v3.1.1</span></div>
 </div>
 
 <div id="lobby" class="wrap">
@@ -538,10 +538,14 @@ async function trashPick(a){
   if(pick) socket.emit('act',{type:a.type,id:a.id,pickId:pick});
 }
 
+const ALL_CARD_TYPES=[['mole','Snap Inspection'],['sched1','Scheduled (1)'],['sched2','Scheduled (2)'],
+  ['poach','Poach'],['switch','Switcheroo'],['chilli','Hot Chilli'],['grease','Grease the Palm'],
+  ['klepto','Kleptomaniac'],['shakedown','Shakedown'],['territorial','Territorial'],
+  ['wok','Wok Block'],['boardup','Board Up'],['food','Food'],['cat','Cat'],['lastresort','Last Resort'],
+  ['delivery','Special Delivery'],['trashdiver','Trash Diver'],['rattrap','Rat Trap'],
+  ['exterm','Exterminator'],['inherit','Inheritance'],['gambit','Gambit']].sort((a,b)=>a[1].localeCompare(b[1]));
 async function shakedownName(a, targetId){
-  // demand a card by name — offer the known card types
-  const types=[['food','Food'],['poach','Poach'],['cat','Cat'],['wok','Wok Block'],['boardup','Board Up'],['mole','Snap Inspection'],['sched1','Scheduled'],['switch','Switcheroo'],['chilli','Hot Chilli'],['delivery','Special Delivery'],['gambit','Gambit'],['lastresort','Last Resort']];
-  const pick=await modalPick('Demand which card?', types.map(([v,l])=>({label:l,value:v})));
+  const pick=await modalPick('Demand which card?', ALL_CARD_TYPES.map(([v,l])=>({label:l,value:v})));
   if(pick) socket.emit('act',{type:a.type,id:a.id,target:targetId,named:pick});
 }
 function pickMsg(a){
