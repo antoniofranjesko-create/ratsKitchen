@@ -127,6 +127,11 @@ button:disabled{opacity:.35;cursor:not-allowed}
 .rat .w{color:var(--lamp)} .rat .h{color:var(--danger)}
 .rat.multi{box-shadow:0 0 0 1px var(--lamp),0 2px 4px rgba(0,0,0,.4)}
 .rat.alpha .art{color:var(--lamp)}
+.rat.shielded{box-shadow:0 0 0 2px var(--blue),0 2px 4px rgba(0,0,0,.4)}
+.rat.chilli{box-shadow:0 0 0 2px var(--danger),0 2px 6px rgba(224,83,31,.4);animation:chillipulse 1.6s infinite}
+@keyframes chillipulse{0%,100%{box-shadow:0 0 0 2px var(--danger),0 2px 6px rgba(224,83,31,.3)}50%{box-shadow:0 0 0 2px var(--danger),0 2px 12px rgba(224,83,31,.7)}}
+.ratmarks{position:absolute;top:6px;right:2px;display:flex;flex-direction:column;gap:1px;z-index:2}
+.ratmark{font-size:11px;line-height:1}
 .pips{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;min-height:18px}
 .pip{font-family:'Barlow Condensed';font-size:10px;letter-spacing:1px;text-transform:uppercase;
   padding:2px 7px;border-radius:20px;border:1px solid var(--line-lit);color:var(--bone-dim)}
@@ -220,7 +225,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 <body>
 <div class="topbar">
   <div class="brand">RAT'S <b>KITCHEN</b></div>
-  <div class="meta"><span class="build">BUILD v3.0.0</span></div>
+  <div class="meta"><span class="build">BUILD v3.1.0</span></div>
 </div>
 
 <div id="lobby" class="wrap">
@@ -281,9 +286,9 @@ button:disabled{opacity:.35;cursor:not-allowed}
 
 <script>
 const socket = io();
-let YOU=null, STATE=null, picking=null, selectedCardId=null;
+let YOU=null, STATE=null, picking=null, selectedCardId=null, pendingGambit=null;
 const $=id=>document.getElementById(id);
-const RAT_ART={plain:'🐀',runner:'🐀',fat:'🐀',sow:'🐀',alpha:'👑',sewer:'🐀',toll:'🐀',feral:'🐀',spice:'🐀',boiler:'🐀',larder:'🐀'};
+const RAT_ART={plain:'🐀',runner:'🐀',fat:'🐀',sow:'🐀',alpha:'👑',sewer:'🐀',toll:'🐀',feral:'🐀',spice:'🐀',boiler:'🐀',larder:'🐀',ratato:'🥔'};
 const CARD_ART={mole:'🦫',sched1:'🦅',sched2:'🦅',poach:'🎣',ratato:'🥔',switch:'🔄',chilli:'🌶️',territorial:'🚧',grease:'💰',food:'🍜',cat:'🐱',wok:'🍳',boardup:'🔨',rattrap:'🪤',trojan:'📦',delivery:'🚚',wd_release:'🗑️',exterm:'🧯',misc:'🎲'};
 const CARD_CLS={mole:'attack',sched1:'attack',sched2:'attack',poach:'attack',ratato:'attack',switch:'attack',chilli:'attack',territorial:'control',grease:'attack',food:'buff',cat:'defence',wok:'defence',boardup:'defence',rattrap:'engine',trojan:'engine',delivery:'engine',wd_release:'drawn',exterm:'engine',misc:'drawn'};
 const CARD_TYPE={attack:'Attack',defence:'Defence',engine:'Engine',control:'Control',nerf:'Nerf',buff:'Buff',drawn:'When drawn'};
@@ -318,7 +323,19 @@ function render(){
     $('pickerMsg').textContent=picking.msg;
     picking.targets.forEach(tid=>{
       const el=document.querySelector('.stall[data-id="'+tid+'"]');
-      if(el){el.classList.add('target');el.onclick=()=>{const a=picking.act;picking=null;$('pickerBar').classList.add('hidden');send(a,tid,null);};}
+      if(el){el.classList.add('target');el.onclick=async()=>{
+        const a=picking.act; const then=picking.then; picking=null; $('pickerBar').classList.add('hidden');
+        if(then==='colour'){
+          const target=STATE.players.find(x=>x.id===tid);
+          const cols=await colourPick(target, a.needsColour);
+          if(cols.length) socket.emit('act',{type:a.type,id:a.id,target:tid,cols});
+          else render();
+        } else if(then==='shakedown'){
+          await shakedownName(a, tid);
+        } else {
+          send(a,tid,null);
+        }
+      };}
     });
   }else $('pickerBar').classList.add('hidden');
   const me=STATE.players.find(p=>p.id===YOU);
@@ -386,8 +403,15 @@ function ratHTML(r){
   const col=r.col||'none';const cls=['rat',col];
   if(r.kind==='alpha') cls.push('alpha');
   if(r.cols&&r.cols.length>1) cls.push('multi');
-  return `<div class="${cls.join(' ')}" title="${esc(r.name)} · weight ${r.w} · heat ${r.heat}">
-    <div class="band"></div><div class="art">${RAT_ART[r.kind]||'🐀'}</div>
+  if(r.shielded) cls.push('shielded');
+  if(r.chilli) cls.push('chilli');
+  const marks=[];
+  if(r.shielded) marks.push('<span class="ratmark cat" title="Shielded by a Cat">🐱</span>');
+  if(r.chilli) marks.push('<span class="ratmark hot" title="Hot Chilli — explodes next turn">🌶️</span>');
+  return `<div class="${cls.join(' ')}" title="${esc(r.name)} · weight ${r.w} · heat ${r.heat}${r.shielded?' · shielded':''}${r.chilli?' · chilli planted':''}">
+    <div class="band"></div>
+    ${marks.length?`<div class="ratmarks">${marks.join('')}</div>`:''}
+    <div class="art">${RAT_ART[r.kind]||'🐀'}</div>
     <div class="nm">${esc(shortName(r.name))}</div>
     <div class="corners"><span class="w">${r.w}</span><span class="h">${r.heat}</span></div></div>`;
 }
@@ -462,16 +486,77 @@ function shortDesc(d){
   return s.length>60? s.slice(0,58)+'…' : s+'.';
 }
 function choose(a){
-  if(a.needsTarget){picking={act:a,targets:a.targets,msg:pickMsg(a)};selectedCardId=null;render();return;}
+  // Gambit: peek at top 3 first, then pick
+  if(a.type==='gambit'){ selectedCardId=null; socket.emit('peekGambit',{id:a.id}); pendingGambit=a; return; }
+  // Trash Diver: pick from last 3 discards
+  if(a.type==='trashdiver'){ selectedCardId=null; trashPick(a); return; }
+  // Shakedown: needs target then a card-name to demand
+  if(a.type==='shakedown'){ picking={act:a,targets:a.targets,msg:'Shakedown — click a stall',then:'shakedown'}; selectedCardId=null; render(); return; }
+  if(a.needsTarget){
+    // 'fire' needs a colour after the target
+    picking={act:a,targets:a.targets,msg:pickMsg(a),then:a.needsColour?'colour':null};
+    selectedCardId=null; render(); return;
+  }
   selectedCardId=null;
   send(a,null,null);
 }
+
+// modal card/colour chooser
+function modalPick(title, options){
+  return new Promise(resolve=>{
+    const wrap=document.createElement('div'); wrap.className='cardinfo';
+    wrap.innerHTML=`<div class="box" style="max-width:420px"><div class="top" style="background:var(--lamp);color:var(--grease)">${esc(title)}</div><div class="foot" id="mp" style="flex-wrap:wrap;padding:14px"></div></div>`;
+    const box=wrap.querySelector('#mp');
+    options.forEach(o=>{ const b=document.createElement('button'); b.className='ghost'; b.style.flex='0 0 auto'; b.innerHTML=o.label; b.onclick=()=>{wrap.remove();resolve(o.value);}; box.appendChild(b); });
+    const cx=document.createElement('button'); cx.className='end'; cx.textContent='Cancel'; cx.onclick=()=>{wrap.remove();resolve(null);}; box.appendChild(cx);
+    document.body.appendChild(wrap);
+  });
+}
+
+const COLOUR_LABELS={red:'🔴 Red',blue:'🔵 Blue',green:'🟢 Green',yellow:'🟡 Yellow'};
+async function colourPick(target, cap){
+  // colours actually present in the target kitchen
+  const present=[...new Set(target.rats.map(r=>r.col).filter(Boolean))];
+  if(!present.length) return [];
+  if(cap===1){
+    const c=await modalPick('Inspect which colour?', present.map(c=>({label:COLOUR_LABELS[c],value:c})));
+    return c?[c]:[];
+  }
+  // cap 2: pick up to two
+  const first=await modalPick('First colour to inspect', present.map(c=>({label:COLOUR_LABELS[c],value:c})));
+  if(!first) return [];
+  const rest=present.filter(c=>c!==first);
+  if(!rest.length) return [first];
+  const second=await modalPick('Second colour (or skip)', [...rest.map(c=>({label:COLOUR_LABELS[c],value:c})),{label:'Just the one',value:'__skip'}]);
+  return second&&second!=='__skip'?[first,second]:[first];
+}
+
+async function trashPick(a){
+  const last=(STATE.lastDiscards||[]);
+  if(!last.length){ send(a,null,null); return; }
+  const pick=await modalPick('Recover which discard?', last.map(d=>({label:d.name,value:d.id})));
+  if(pick) socket.emit('act',{type:a.type,id:a.id,pickId:pick});
+}
+
+async function shakedownName(a, targetId){
+  // demand a card by name — offer the known card types
+  const types=[['food','Food'],['poach','Poach'],['cat','Cat'],['wok','Wok Block'],['boardup','Board Up'],['mole','Snap Inspection'],['sched1','Scheduled'],['switch','Switcheroo'],['chilli','Hot Chilli'],['delivery','Special Delivery'],['gambit','Gambit'],['lastresort','Last Resort']];
+  const pick=await modalPick('Demand which card?', types.map(([v,l])=>({label:l,value:v})));
+  if(pick) socket.emit('act',{type:a.type,id:a.id,target:targetId,named:pick});
+}
 function pickMsg(a){
-  const verb={mole:'Inspect',fire:'Fire inspection on',poach:'Poach from',ratato:'Dump a rat onto',
-    switch:'Swap with',chilli:'Explode a rat in',territorial:'Mark',grease:'Grease',
-    trojan:'Plant a rat in',rattrap:'Trap'}[a.type]||'Target';
+  const verb={mole:'Inspect',fire:'Fire inspection on',poach:'Poach from',play_ratato:'Deploy Ratato Rat into',
+    switch:'Swap with',chilli:'Plant a chilli in',territorial:'Mark',grease:'Grease',
+    klepto:'Rob a card from',shakedown:'Shake down',rattrap:'Trap'}[a.type]||'Target';
   return verb+' — click a stall';
 }
+socket.on('gambitPeek', async ({cardId, options})=>{
+  if(!pendingGambit) return;
+  const a=pendingGambit; pendingGambit=null;
+  const pick=await modalPick('Gambit — keep one (the other two go back on top)',
+    options.map(o=>({label:o.isRat?`🐀 ${o.name}`:o.name, value:o.id})));
+  if(pick) socket.emit('act',{type:a.type,id:a.id,keepId:pick});
+});
 $('pickerCancel').onclick=()=>{picking=null;render()};
 function send(a,target,ratId){socket.emit('act',{type:a.type,id:a.id,target,ratId})}
 </script>

@@ -15,63 +15,66 @@ const ALPHA_COLOURS = 4;   // Alpha shows on all 4 colours (big inspection targe
 // ── rat catalogue ────────────────────────────────────────────────────────
 // weight, heat, prop, colourable
 const RATS = {
-  plain:  { name: 'Rat',        w: 1, heat: 1, prop: null,          col: true, desc: "A plain rat. Weight 1, heat 1. Stock, and a small inspection risk." },
-  runner: { name: 'Runner Rat', w: 1, heat: 1, prop: 'draw_again',  col: true, desc: "Draws you another card the moment it enters your kitchen." },
-  fat:    { name: 'Fat Rat',    w: 2, heat: 2, prop: null,          col: true, desc: "Heavy stock — weight 2. The rat everyone wants, worth 2 heat when inspected." },
-  sow:    { name: 'The Sow',    w: 2, heat: 2, prop: 'extra_draw',  col: true, desc: "While you hold her, draw an extra card each turn. Only one exists." },
-  alpha:  { name: 'Alpha Rat',  w: 2, heat: 3, prop: 'alpha_win',    col: true, desc: "Win instantly when you hold Alpha plus 3 other rats (any weights). Shows on all four colours, so easy to inspect. Must be held one full turn before it can win." },
-  sewer:  { name: 'Sewer Rat',  w: 1, heat: 0, prop: null,          col: false, desc: "Colourless and heat 0 — invisible to inspection. Safe weight." },
-  toll:   { name: 'Toll Rat',   w: 1, heat: 1, prop: 'tax',         col: true, desc: "If an inspector hits you while you hold Toll, the inspector must hand you a card." },
-  feral:  { name: 'Feral Rat',  w: 1, heat: 1, prop: 'no_dump',     col: true, desc: "Cannot be Hot Ratatod out of your kitchen." },
-  spice:  { name: 'Spice Rat',  w: 1, heat: 1, prop: 'no_explode',  col: true, desc: "Cannot be destroyed by Hot Chilli." },
-  boiler: { name: 'Boiler Rat', w: 1, heat: 1, prop: 'no_steal',    col: true, desc: "Cannot be stolen by Poach." },
-  larder: { name: 'Larder Rat', w: 1, heat: 1, prop: 'free_eat',    col: true, desc: "Eat it for free (no Food needed) to regain stars equal to its weight." },
+  plain:  { name: 'Street Rat', w: 1, heat: 1, prop: null,          col: true,  desc: 'Plain stock. A small inspection risk.' },
+  runner: { name: 'Runner Rat', w: 1, heat: 1, prop: 'draw_again',  col: true,  desc: 'Draw a card the moment it enters your kitchen.' },
+  fat:    { name: 'Fat Rat',    w: 2, heat: 2, prop: 'no_cat',      col: true,  desc: 'Heavy stock — weight 2. Cannot be shielded by a Cat.' },
+  sow:    { name: 'Sow Rat',    w: 2, heat: 2, prop: 'draw_or_play',col: true,  desc: 'While held, once per turn you may draw a card instead of playing.' },
+  alpha:  { name: 'Alpha Rat',  w: 2, heat: 2, prop: 'alpha_guard', col: true,  desc: 'While Alpha is in your kitchen, none of your rats can be Poached. Cannot be Cat-shielded.' },
+  sewer:  { name: 'Sewer Rat',  w: 1, heat: 0, prop: null,          col: false, desc: 'Colourless and heat 0 — invisible to inspection.' },
+  toll:   { name: 'Toll Rat',   w: 1, heat: 1, prop: 'tax',         col: true,  desc: 'If inspected while you hold it, the inspector gives you a card.' },
+  feral:  { name: 'Feral Rat',  w: 1, heat: 1, prop: 'no_dump',     col: true,  desc: 'Cannot be moved by sabotage or dump effects.' },
+  spice:  { name: 'Spice Rat',  w: 1, heat: 1, prop: 'no_explode',  col: true,  desc: 'Cannot be Hot Chilli-d.' },
+  boiler: { name: 'Boiler Rat', w: 1, heat: 1, prop: 'no_steal',    col: true,  desc: 'Cannot be Poached.' },
+  larder: { name: 'Larder Rat', w: 1, heat: 1, prop: 'free_eat',    col: true,  desc: 'May eat itself for free — stars equal to its weight.' },
+  ratato: { name: 'Ratato Rat', w: 0, heat: 1, prop: 'sabotage',    col: true,  desc: 'No weight — worthless as stock, but carries heat. Play it into a RIVAL kitchen to draw the inspector eye. Never your own.' },
 };
 
 // action card catalogue: type -> {name, cls}
 const CARDS = {
-  mole:        { name: 'Naked Mole Rat',  cls: 'attack', desc: "Snap inspection. Hits any one rival for -1 star immediately. Ignores colour (the mole is blind)." },
-  sched1:      { name: 'Scheduled (1)',   cls: 'attack', desc: "Arm now on one colour; fires NEXT turn against a rival holding that colour, dealing damage equal to their heat in that colour. Expires if not fired." },
-  sched2:      { name: 'Scheduled (2)',   cls: 'attack', desc: "As Scheduled, but names TWO colours; fires against a rival holding either, dealing their combined heat in those colours." },
-  poach:       { name: 'Poach',           cls: 'attack', desc: "Steal one WEIGHT-1 rat from a rival. Cannot take heavier rats (the poacher can only carry so much)." },
-  ratato:      { name: 'Hot Ratato',      cls: 'attack', desc: "Dump one of YOUR rats (your hottest) into a rival kitchen. Moves heat off your counter onto theirs." },
-  switch:      { name: 'Switcheroo',      cls: 'attack', desc: "Swap one of your rats for one of a rivals, regardless of weight. The only card where weight does not matter." },
-  chilli:      { name: 'Hot Chilli',      cls: 'attack', desc: "Destroy one rat in a rival kitchen (to the bins). No star damage — removes stock, not stars." },
-  territorial: { name: 'Territorial',     cls: 'control', desc: "A rival kitchen cannot receive rats for a turn; rats they would gain go to the bins." },
-  grease:      { name: 'Grease the Palm',  cls: 'attack', desc: "Discard a rivals armed Scheduled inspection before it can fire." },
-  food:        { name: 'Food',            cls: 'buff', desc: "Fuel. Spend 2 Food for 1 star, or 1 Food to eat a rat for stars equal to its weight. Powers most builds." },
-  cat:         { name: 'Cat',             cls: 'defence', desc: "Reactive. Blocks the next single attack on your rats (steal / swap / explode). Not inspections." },
-  wok:         { name: 'Wok Block',       cls: 'defence', desc: "Reactive. Cancels one inspection aimed at you entirely." },
-  boardup:     { name: 'Board Up',        cls: 'defence', desc: "Your kitchen cannot be attacked for one turn. (When-drawn effects still get through.)" },
-  rattrap:     { name: 'Rat Trap',        cls: 'engine', desc: "Set a trap. The next rat that would enter the trapped kitchen is caught and sent to the bins." },
-  trojan:      { name: 'Trojan Rat',      cls: 'engine', desc: "Take the heaviest rat from the bins and plant it in a rival kitchen." },
-  delivery:    { name: 'Special Delivery', cls: 'engine', desc: "Take the heaviest rat from the bins straight into YOUR kitchen." },
-  wd_release:  { name: 'WD: Rat Release', cls: 'drawn', desc: "When Drawn: fires at once. A rat escapes the bins into whichever kitchen holds the most of its colour. Cannot be held." },
-  exterm:      { name: 'Exterminator',    cls: 'engine', desc: "Clear one rat from your OWN kitchen (your hottest) to the bins — cool your heat." },
-  misc:        { name: 'Odd Job',         cls: 'drawn', desc: "Do a shift for cash: draw a card." },
+  mole:        { name: 'Health Inspection', sub: 'Naked Mole Rat', cls: 'attack', desc: 'Snap inspection. Any rival, flat -1 star, immediately. Colour-agnostic (the mole is blind).' },
+  sched1:      { name: 'Health Inspection', sub: 'Scheduled (1)', cls: 'attack', desc: 'Arm face-down. Fires next turn after your draw: pick a kitchen, then 1 colour; damage = their heat in that colour.' },
+  sched2:      { name: 'Health Inspection', sub: 'Scheduled (2)', cls: 'attack', desc: 'Arm face-down. Fires next turn: pick a kitchen, then up to 2 colours; damage = their heat in those colours.' },
+  poach:       { name: 'Poach',           cls: 'attack', desc: 'Steal one weight-1 rat from a rival. Blocked by Boiler, and by any rat in an Alpha-guarded kitchen.' },
+  switch:      { name: 'Switcheroo',      cls: 'attack', desc: 'Swap one of your rats for a rival-s, regardless of weight.' },
+  chilli:      { name: 'Hot Chilli',      cls: 'attack', desc: 'Place on a rival-s rat (not Spice). It explodes at the start of your next turn — rat to the bins.' },
+  grease:      { name: 'Grease the Palm', cls: 'attack', desc: 'Discard a rival-s armed Scheduled inspection before it fires.' },
+  klepto:      { name: 'Kleptomaniac',    cls: 'attack', desc: 'Steal one card at random from any opponent-s hand.' },
+  shakedown:   { name: 'Shakedown',       cls: 'attack', desc: 'Name a card. If that opponent holds it, they must give you one.' },
+  territorial: { name: 'Territorial',     cls: 'control', desc: 'Place on a rival kitchen. Until your next turn it cannot receive rats; rats it would gain go to the bins.' },
+  wok:         { name: 'Wok Block',       cls: 'defence', desc: 'Reactive. Cancel one inspection aimed at you.' },
+  boardup:     { name: 'Board Up',        cls: 'defence', desc: 'Your kitchen cannot be attacked for one turn.' },
+  food:        { name: 'Food',            cls: 'buff', desc: 'Spend 2 Food to regain 1 star. Powers builds that need feeding.' },
+  cat:         { name: 'Cat',             cls: 'buff', desc: 'Play on one of your rats (not Fat or Alpha) to shield it — blocks the next single attack on that rat.' },
+  lastresort:  { name: 'Last Resort',     cls: 'buff', desc: 'Eat any one of your rats and regain stars equal to its weight.' },
+  delivery:    { name: 'Special Delivery',cls: 'engine', desc: 'Take the TOP rat of the bins into your kitchen. Never choose.' },
+  trashdiver:  { name: 'Trash Diver',     cls: 'engine', desc: 'Take any one of the last 3 discarded cards from the bins.' },
+  rattrap:     { name: 'Rat Trap',        cls: 'engine', desc: 'The next rat that would enter the trapped kitchen is caught and sent to the bins.' },
+  exterm:      { name: 'Exterminator',    cls: 'engine', desc: 'Instantly remove one of your own rats (your hottest) to the bins — cool your heat.' },
+  inherit:     { name: 'Inheritance',     cls: 'engine', desc: 'When a rival is shut down, take 2 of their cards at random.' },
+  gambit:      { name: 'Gambit',          cls: 'drawn', desc: 'Look at the top 3 cards of the deck. Keep 1; put the other 2 back on top (you know what they are).' },
+  wd_release:  { name: 'WD: Rat Release', cls: 'drawn', desc: 'When drawn, fires at once. The top bins rat escapes to the kitchen holding most of its colour. Cannot be held.' },
 };
 
 // per-player-count deck config (13% density band; see spec 10e)
 function deckConfig(P) {
-  const insp = Math.round(12 + P * 0.9);
-  const denial = 12;
-  const mole = Math.max(2, Math.round(insp * 0.40));
-  const s1   = Math.max(1, Math.round(insp * 0.35));
-  const s2   = Math.max(1, Math.round(insp * 0.25));
-  const poach  = Math.max(2, Math.round(denial * 0.45));
-  const ratato = Math.max(1, Math.round(denial * 0.30));
-  const swtch  = Math.max(1, Math.round(denial * 0.25));
+  // Inspections scale gently; §6 counts are the 6P baseline.
+  const inspScale = P / 6;
+  const mole   = Math.max(2, Math.round(4 * inspScale));
+  const sched1 = Math.max(3, Math.round(6 * inspScale));
+  const sched2 = Math.max(3, Math.round(6 * inspScale));
   const actions = {
-    mole, sched1: s1, sched2: s2,
-    poach, ratato, switch: swtch,
-    food: 14, chilli: 4, cat: 6, wok: 2, boardup: 4, territorial: 4,
-    rattrap: 5, trojan: 4, delivery: 4, wd_release: 8, grease: 3,
-    exterm: 3, misc: 10,
+    mole, sched1, sched2,
+    poach: 5, switch: 3, chilli: 4, grease: 3, klepto: 3, shakedown: 3,
+    territorial: 3, wok: 2, boardup: 4,
+    food: 12, cat: 3, lastresort: 3,
+    delivery: 4, trashdiver: 3, rattrap: 5, exterm: 3, inherit: 3,
+    gambit: 3, wd_release: 8,
   };
-  // rats: total ~13% of deck, 10 in deck + ~6 seeded to bins
-  const deckRats = P <= 4 ? 10 : (P <= 6 ? 10 : 10);
+  // rats: ~10 non-ratato in deck + 3 Ratato Rats + 6 seeded to bins
+  const deckRats = 10;
+  const ratatoRats = 3;
   const binSeed = 6;
-  return { actions, deckRats, binSeed };
+  return { actions, deckRats, ratatoRats, binSeed };
 }
 
 function rid() { return Math.random().toString(36).slice(2, 9); }
@@ -91,19 +94,38 @@ function makeRat(kind, colour) {
 }
 
 // Build a colour-balanced rat pool (heat balanced 4/4/4/4 per spec 5.3).
-function buildRatPool(n) {
-  // distribution weights roughly matching the roster shares
+function buildRatPool(n, opts) {
+  opts = opts || {};
+  // rat type shares (Ratato excluded here — added separately). Sewer is colourless.
   const mix = [
-    ['plain', 0.20], ['runner', 0.16], ['fat', 0.12], ['sow', 0.04],
+    ['plain', 0.22], ['runner', 0.15], ['fat', 0.12], ['sow', 0.04],
     ['alpha', 0.06], ['sewer', 0.10], ['toll', 0.08], ['feral', 0.08],
-    ['spice', 0.06], ['boiler', 0.05], ['larder', 0.05],
+    ['spice', 0.06], ['boiler', 0.05], ['larder', 0.04],
   ];
-  const pool = [];
+  // 1) pick types
+  const picked = [];
   for (let i = 0; i < n; i++) {
     let r = Math.random(), pick = 'plain';
     for (const [k, wgt] of mix) { r -= wgt; if (r <= 0) { pick = k; break; } }
-    const colour = COLOURS[i % COLOURS.length];
-    pool.push(makeRat(pick, colour));
+    picked.push(pick);
+  }
+  // 2) assign colours to EQUALISE total heat per colour (§5.2).
+  //    Colourless rats (Sewer) skip. Greedily place each coloured rat on the
+  //    colour with the least heat so far — random tie-break — so heat is even
+  //    but which rats land where is effectively random.
+  const heatByCol = { red:0, blue:0, green:0, yellow:0 };
+  const pool = [];
+  // shuffle order so assignment isn't type-ordered
+  for (let i = picked.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [picked[i],picked[j]]=[picked[j],picked[i]]; }
+  for (const kind of picked) {
+    const d = RATS[kind];
+    if (d.col === false) { pool.push(makeRat(kind, null)); continue; }
+    // choose the lowest-heat colour, random among ties
+    let min = Infinity; for (const c of COLOURS) min = Math.min(min, heatByCol[c]);
+    const cands = COLOURS.filter(c => heatByCol[c] === min);
+    const colour = cands[Math.floor(Math.random()*cands.length)];
+    heatByCol[colour] += d.heat;
+    pool.push(makeRat(kind, colour));
   }
   return pool;
 }
@@ -136,6 +158,8 @@ function newGame(playerDefs) {
     for (let i = 0; i < count; i++) deck.push({ id: rid(), card: type });
   }
   for (const r of buildRatPool(cfg.deckRats)) deck.push({ id: r.id, rat: r });
+  // Ratato Rats (0 weight, 1 heat) — spread across colours
+  for (let i = 0; i < cfg.ratatoRats; i++) deck.push({ id: rid(), rat: makeRat('ratato', COLOURS[i % COLOURS.length]) });
   shuffle(deck);
 
   // bins seeded with rats (bins == discard)
@@ -233,9 +257,9 @@ function tryWok(g, t) {
   if (i >= 0) { g.bins.push(t.hand.splice(i, 1)[0]); return true; }
   return false;
 }
-function tryCat(g, t) {
-  const i = t.hand.findIndex(c => c.card === 'cat');
-  if (i >= 0) { g.bins.push(t.hand.splice(i, 1)[0]); return true; }
+function tryCat(g, t, rat) {
+  // Cat is now a buff pre-placed on a rat. If that rat carries a shield, consume it.
+  if (rat && rat._catShield) { rat._catShield = false; return true; }
   return false;
 }
 
@@ -245,6 +269,21 @@ function damage(g, t, d) {
   if (t.stars <= 0) eliminate(g, t);
 }
 function eliminate(g, t) {
+  // Inheritance: any ALIVE player holding an Inheritance card takes 2 of the
+  // eliminated player's cards at random (before they hit the bins).
+  for (const q of g.players) {
+    if (!q.alive || q.id === t.id) continue;
+    const inh = q.hand.findIndex(c => c.card === 'inherit');
+    if (inh >= 0 && t.hand.length) {
+      q.hand.splice(inh, 1); g.bins.push({ id: rid(), card: 'inherit' });
+      for (let k = 0; k < 2 && t.hand.length; k++) {
+        const i = Math.floor(Math.random() * t.hand.length);
+        q.hand.push(t.hand.splice(i, 1)[0]);
+      }
+      logAdd(g, `${q.name} inherits from ${t.name}'s fallen stall.`);
+      break;
+    }
+  }
   t.alive = false;
   for (const r of t.rats) g.bins.push({ id: r.id, rat: r });
   t.rats = [];
