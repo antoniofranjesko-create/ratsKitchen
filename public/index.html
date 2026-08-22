@@ -151,6 +151,27 @@ button:disabled{opacity:.35;cursor:not-allowed}
 .log div{padding:3px 0;border-bottom:1px solid rgba(58,44,34,.5)}
 .log div:last-child{border:none;color:var(--bone)}
 .pool{display:flex;gap:14px;padding:12px;font-family:'Barlow Condensed';letter-spacing:1px}
+.nowplaying{padding:12px;min-height:60px;display:flex;align-items:center;justify-content:center}
+.nowplaying .np-empty{font-family:'Barlow Condensed';letter-spacing:2px;text-transform:uppercase;font-size:11px;color:var(--ash)}
+.nowplaying .np-card{display:flex;gap:10px;align-items:center;width:100%}
+.np-mini{flex:0 0 auto;width:52px;height:70px;border-radius:5px;background:var(--stall-lit);border:2px solid var(--c-drawn);position:relative;overflow:hidden;box-shadow:0 3px 8px rgba(0,0,0,.5)}
+.np-mini.attack{border-color:var(--c-attack)} .np-mini.defence{border-color:var(--c-defence)}
+.np-mini.engine{border-color:var(--c-engine)} .np-mini.control{border-color:var(--c-control)}
+.np-mini.nerf{border-color:var(--c-nerf)} .np-mini.buff{border-color:var(--c-buff)} .np-mini.drawn{border-color:var(--c-drawn)}
+.np-mini .b{height:5px}
+.np-mini.attack .b{background:var(--c-attack)} .np-mini.defence .b{background:var(--c-defence)}
+.np-mini.engine .b{background:var(--c-engine)} .np-mini.control .b{background:var(--c-control)}
+.np-mini.nerf .b{background:var(--c-nerf)} .np-mini.buff .b{background:var(--c-buff)} .np-mini.drawn .b{background:var(--c-drawn)}
+.np-mini .ic{height:38px;display:flex;align-items:center;justify-content:center;font-size:20px;opacity:.6;filter:grayscale(1)}
+.np-mini .nm{font-family:'Barlow Condensed';font-size:7px;letter-spacing:.3px;text-align:center;color:var(--bone-dim);text-transform:uppercase;padding:0 2px;line-height:1}
+.np-txt{flex:1;font-family:'Barlow';font-size:13px;line-height:1.4;color:var(--bone)}
+.np-txt b{color:var(--lamp)}
+.np-txt .np-tgt{color:var(--danger)}
+.np-fresh{animation:npflash .5s ease}
+@keyframes npflash{0%{transform:scale(1.15);filter:brightness(1.5)}100%{transform:scale(1);filter:none}}
+.stepwrap{padding:0 12px 12px}
+.step{width:100%;background:var(--lamp);color:var(--grease);font-size:15px;padding:12px}
+.step:hover{filter:brightness(1.12)}
 .pool .b{display:flex;flex-direction:column}
 .pool .b .k{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--bone-dim)}
 .pool .b .v{font-family:'Bebas Neue';font-size:24px;color:var(--bone);line-height:1}
@@ -225,7 +246,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 <body>
 <div class="topbar">
   <div class="brand">RAT'S <b>KITCHEN</b></div>
-  <div class="meta"><span class="build">BUILD v3.1.1</span></div>
+  <div class="meta"><span class="build">BUILD v3.1.2</span></div>
 </div>
 
 <div id="lobby" class="wrap">
@@ -260,6 +281,13 @@ button:disabled{opacity:.35;cursor:not-allowed}
     <div class="table">
       <div id="stalls" class="stalls"></div>
       <div class="rail">
+        <div class="panel" id="nowPanel">
+          <div class="panel-h">On the table</div>
+          <div id="nowPlaying" class="nowplaying"></div>
+          <div id="stepWrap" class="stepwrap hidden">
+            <button id="btnStep" class="step">▶ Next player</button>
+          </div>
+        </div>
         <div class="panel"><div class="panel-h">The bins &amp; deck</div>
           <div class="pool">
             <div class="b"><span class="k">Bins (rats)</span><span class="v" id="binsN">0</span></div>
@@ -316,6 +344,7 @@ function render(){
   $('binsN').textContent=STATE.binsRats;
   $('deckN').textContent=STATE.deckLeft;
   $('turnN').textContent=STATE.turn;
+  renderNowPlaying();
   const meActive = STATE.active===YOU && !STATE.over;
   $('stalls').innerHTML=STATE.players.map(p=>stallHTML(p)).join('');
   if(picking){
@@ -367,6 +396,33 @@ function render(){
   }else $('winner').classList.add('hidden');
 }
 function waitingMsg(){const a=STATE.players.find(p=>p.id===STATE.active);return a?`Waiting on ${a.name}…`:''}
+
+let lastSeenPlay=0;
+function renderNowPlaying(){
+  const lp=STATE.lastPlayed;
+  const box=$('nowPlaying');
+  if(lp){
+    const cls=lp.cls||'drawn';
+    const art=CARD_ART[lp.key]||(lp.key==='ratato_rat'?'🥔':'🎴');
+    const fresh = lp.at && lp.at>lastSeenPlay;
+    lastSeenPlay = lp.at||lastSeenPlay;
+    const colBits = lp.cols&&lp.cols.length? ' ('+lp.cols.map(c=>({red:'🔴',blue:'🔵',green:'🟢',yellow:'🟡'}[c]||c)).join(' ')+')':'';
+    const tgt = lp.targetName? ` on <span class="np-tgt">${esc(lp.targetName)}</span>`:'';
+    const sub = lp.sub? `<div style="font-size:11px;color:var(--bone-dim)">${esc(lp.sub)}</div>`:'';
+    box.innerHTML=`<div class="np-card">
+      <div class="np-mini ${cls} ${fresh?'np-fresh':''}"><div class="b"></div><div class="ic">${art}</div><div class="nm">${esc(shortCardName(lp.name))}</div></div>
+      <div class="np-txt"><b>${esc(lp.byName)}</b> played <b>${esc(lp.name)}</b>${colBits}${tgt}${sub}</div>
+    </div>`;
+  }else{
+    box.innerHTML='<div class="np-empty">no card played yet</div>';
+  }
+  // step button visible when it's a bot's turn to advance
+  const wrap=$('stepWrap');
+  if(STATE.awaitingStep && !STATE.over){ wrap.classList.remove('hidden'); }
+  else { wrap.classList.add('hidden'); }
+}
+function shortCardName(n){return n.replace('Health Inspection','H.I.')}
+$('btnStep')&&($('btnStep').onclick=()=>socket.emit('stepBot'));
 function stallHTML(p){
   const cls=['stall'];
   if(p.id===STATE.active&&!STATE.over) cls.push('active');
@@ -379,8 +435,8 @@ function stallHTML(p){
   const pips=[];
   if(p.armed){
     const own = p.id===YOU;
-    const colBand = p.armed.cols.map(c=>`<span class="inspcol ${c}"></span>`).join('');
-    pips.push(`<span class="pip armed ${p.armed.ready?'ready':''}">⚑ ${own?'YOUR inspector':'inspector'} ${p.armed.ready?'ready':'arming'} ${colBand}</span>`);
+    const capTxt = p.armed.cap===2?'2-colour':'1-colour';
+    pips.push(`<span class="pip armed ${p.armed.ready?'ready':''}">⚑ ${own?'YOUR inspector':'inspector'} ${p.armed.ready?'ready to fire':'arming'} · ${capTxt}</span>`);
   }
   if(p.boardup) pips.push('<span class="pip board">boarded up</span>');
   if(p.territorial) pips.push('<span class="pip terr">territorial</span>');

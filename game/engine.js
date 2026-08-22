@@ -32,8 +32,8 @@ const RATS = {
 // action card catalogue: type -> {name, cls}
 const CARDS = {
   mole:        { name: 'Health Inspection', sub: 'Naked Mole Rat', cls: 'attack', desc: 'Snap inspection. Any rival, flat -1 star, immediately. Colour-agnostic (the mole is blind).' },
-  sched1:      { name: 'Health Inspection', sub: 'Scheduled (1)', cls: 'attack', desc: 'Arm face-down. Fires next turn after your draw: pick a kitchen, then 1 colour; damage = their heat in that colour.' },
-  sched2:      { name: 'Health Inspection', sub: 'Scheduled (2)', cls: 'attack', desc: 'Arm face-down. Fires next turn: pick a kitchen, then up to 2 colours; damage = their heat in those colours.' },
+  sched1:      { name: 'Health Inspection', sub: 'Scheduled — 1 Colour', cls: 'attack', desc: 'Arm face-down. Fires next turn after your draw: pick a kitchen, then 1 colour; damage = their heat in that colour.' },
+  sched2:      { name: 'Health Inspection', sub: 'Scheduled — 2 Colour', cls: 'attack', desc: 'Arm face-down. Fires next turn: pick a kitchen, then up to 2 colours; damage = their heat in those colours.' },
   poach:       { name: 'Poach',           cls: 'attack', desc: 'Steal one weight-1 rat from a rival. Blocked by Boiler, and by any rat in an Alpha-guarded kitchen.' },
   switch:      { name: 'Switcheroo',      cls: 'attack', desc: 'Swap one of your rats for a rival-s, regardless of weight.' },
   chilli:      { name: 'Hot Chilli',      cls: 'attack', desc: 'Place on a rival-s rat (not Spice). It explodes at the start of your next turn — rat to the bins.' },

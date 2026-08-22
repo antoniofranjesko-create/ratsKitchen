@@ -23,6 +23,14 @@ function project(g, viewerId) {
   return {
     over: g.over, winner: g.winner, active: g.players[g.active] && g.players[g.active].id,
     turn: g.turn, threshold: E.THRESHOLD, log: g.log.slice(-14),
+    lastPlayed: g.lastPlayed || null,
+    awaitingStep: (() => {
+      // a step is available when the game isn't over, it's a bot's turn coming up,
+      // and no human currently needs to act
+      if (g.over) return false;
+      const active = g.players[g.active];
+      return active && active.bot;
+    })(),
     binsRats: g.bins.filter(b => b.rat).length,
     deckLeft: g.deck.length,
     lastDiscards: g.bins.filter(b => b.card).slice(-3).map(b => ({ id: b.id, card: b.card, name: (E.CARDS[b.card]&&E.CARDS[b.card].name)||b.card })),
@@ -60,27 +68,27 @@ function broadcast(room) {
 }
 
 // advance any bot turns until it's a human's turn or game over
-function runBots(room) {
+// Advance the game to the next actor. If it's a HUMAN, start their turn and wait.
+// If it's a BOT, start+play+end its turn, then STOP and wait for the human to step.
+function advance(room, autoBots) {
   const g = room.game;
   let guard = 0;
   while (!g.over && guard++ < 5000) {
-    const act = g.players[g.active];
+    const actor = g.players[g.active];
     A.startTurn(g);
     if (g.over) break;
-    if (act.bot) {
-      A.botTurn(g);
-      A.endTurn(g);
-      broadcast(room);
-    } else {
-      broadcast(room);
-      return; // wait for human input
-    }
+    if (!actor.bot) { broadcast(room); return; }   // human's turn — wait for input
+    // bot: play its whole turn
+    A.botTurn(g);
+    A.endTurn(g);
+    broadcast(room);
+    if (!autoBots) return;   // stepping mode: one bot per step, then wait
+    // autoBots mode falls through to keep going (legacy)
   }
-  if (!g.over && guard >= 5000) {
-    E.logAdd(g, 'Turn limit reached — this should not happen; please report.');
-  }
+  if (!g.over && guard >= 5000) E.logAdd(g, 'Turn limit reached — please report.');
   broadcast(room);
 }
+function runBots(room) { advance(room, false); }   // default: step mode
 
 io.on('connection', (socket) => {
   let myRoom = null, myId = null;
@@ -155,6 +163,13 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('stepBot', () => {
+    const room = rooms[myRoom]; if (!room || !room.game || room.game.over) return;
+    const g = room.game;
+    if (!g.players[g.active].bot) { broadcast(room); return; }
+    advance(room, false);
+  });
+
   socket.on('endTurn', () => {
     const room = rooms[myRoom]; if (!room || !room.game || room.game.over) return;
     const g = room.game;
@@ -173,7 +188,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const VERSION = '3.1.1';
+const VERSION = '3.1.2';
 app.get('/version', (req, res) => res.json({ version: VERSION }));
 
 const PORT = process.env.PORT || 3000;

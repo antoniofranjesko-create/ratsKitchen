@@ -188,6 +188,22 @@ function legalActions(g, p) {
 // ── apply an action ──────────────────────────────────────────────────────────
 function apply(g, p, act, targetId, ratId) {
   const t = targetId ? g.players.find(x => x.id === targetId) : null;
+  // record what was just played so the UI can show it physically (central slot)
+  if (act.type !== 'end' && act.type !== 'sow_draw') {
+    const catalogue = E.CARDS[act.type] || E.CARDS[(p.hand.find(c => c.id === act.id) || {}).card];
+    let cardKey = act.type;
+    let cardName = catalogue ? catalogue.name : act.type;
+    let cardSub = catalogue ? catalogue.sub : null;
+    let cardCls = catalogue ? catalogue.cls : 'drawn';
+    if (act.type === 'play_ratato') { cardKey = 'ratato_rat'; cardName = 'Ratato Rat'; cardCls = 'attack'; cardSub = null; }
+    if (act.type === 'fire') { cardKey = 'fire'; cardName = 'Health Inspection'; cardSub = 'Fires!'; cardCls = 'attack'; }
+    g.lastPlayed = {
+      by: p.id, byName: p.name,
+      target: t ? t.id : null, targetName: t ? t.name : null,
+      key: cardKey, name: cardName, sub: cardSub, cls: cardCls,
+      cols: act.cols || null, at: (g.lastPlayedSeq = (g.lastPlayedSeq || 0) + 1),
+    };
+  }
   const ATTACKS = ["mole","poach","play_ratato","switch","chilli","territorial","fire","klepto","shakedown"];
   if (t && t.id !== p.id && ATTACKS.includes(act.type)) { if(!p._hitZones) p._hitZones={}; p._hitZones[t.id] = true; }
   const takeCard = (id) => {
