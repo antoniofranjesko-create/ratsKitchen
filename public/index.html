@@ -191,6 +191,9 @@ button:disabled{opacity:.35;cursor:not-allowed}
 .dock-h .lbl{font-family:'Barlow Condensed';letter-spacing:2px;text-transform:uppercase;font-size:11px;color:var(--lamp-dim)}
 .dock-h .prompt{font-family:'Barlow Condensed';letter-spacing:1px;font-size:14px;color:var(--lamp)}
 .drewnote{color:var(--green)}.drewnote b{color:#8fd14f}
+.fireWarn{color:#fff;background:var(--danger);padding:3px 12px;border-radius:4px;font-family:'Barlow Condensed';font-weight:600;letter-spacing:1px;text-transform:uppercase;font-size:14px;animation:firepulse 1s infinite}
+@keyframes firepulse{0%,100%{box-shadow:0 0 0 0 rgba(224,83,31,.6)}50%{box-shadow:0 0 0 8px rgba(224,83,31,0)}}
+#actions button.fire{background:var(--danger);color:#fff;font-weight:600;animation:firepulse 1.2s infinite}
 .hand{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
 .pcard{flex:0 0 auto;width:132px;min-height:186px;border-radius:6px;background:var(--stall-lit);
   position:relative;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.45);cursor:pointer;
@@ -258,7 +261,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 <body>
 <div class="topbar">
   <div class="brand">RAT'S <b>KITCHEN</b></div>
-  <div class="meta"><span class="build">BUILD v3.4.2</span></div>
+  <div class="meta"><span class="build">BUILD v3.4.3</span></div>
 </div>
 
 <div id="lobby" class="wrap">
@@ -418,7 +421,13 @@ function render(){
   [...document.querySelectorAll('.pcard[data-cid]')].forEach(el=>{
     el.onclick=()=>{ selectedCardId = (selectedCardId===el.dataset.cid)?null:el.dataset.cid; render(); };
   });
-  if(meActive && STATE.justDrew && STATE.justDrew.length){
+  // is MY inspection armed and ready to fire THIS turn (or it expires)?
+  const meP = STATE.players.find(p=>p.id===YOU);
+  const fireReady = meActive && meP && meP.armed && meP.armed.ready;
+  if(fireReady){
+    const cols=(meP.armed.cols||[]).map(c=>({red:'🔴',blue:'🔵',green:'🟢',yellow:'🟡'}[c]||c)).join('');
+    $('dockPrompt').innerHTML = `<span class="fireWarn">⚠ FIRE YOUR INSPECTION ${cols} NOW — it expires at end of this turn!</span>`;
+  } else if(meActive && STATE.justDrew && STATE.justDrew.length){
     const drew=STATE.justDrew.map(d=>{
       if(d.isRat) return `${d.name}${d.held?' (held)':''}`;
       return d.name;
