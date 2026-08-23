@@ -133,6 +133,15 @@ button:disabled{opacity:.35;cursor:not-allowed}
 .ratmarks{position:absolute;top:6px;right:2px;display:flex;flex-direction:column;gap:1px;z-index:2}
 .ratmark{font-size:11px;line-height:1}
 .pips{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;min-height:18px}
+.kcards{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.kcard{display:inline-flex;flex-direction:column;padding:3px 8px;border-radius:4px;border:1px solid;
+  background:var(--grease);line-height:1.1}
+.kcard.engine{border-color:var(--c-engine)} .kcard.control{border-color:var(--c-control)}
+.kcard.defence{border-color:var(--c-defence)} .kcard.attack{border-color:var(--c-attack)}
+.kcard .kc-name{font-family:'Barlow Condensed';font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--bone)}
+.kcard .kc-by{font-family:'Barlow';font-size:9px;color:var(--bone-dim)}
+.kcard.engine .kc-name{color:var(--c-engine)} .kcard.control .kc-name{color:var(--c-control)}
+.kcard.defence .kc-name{color:var(--c-defence)} .kcard.attack .kc-name{color:var(--c-attack)}
 .pip{font-family:'Barlow Condensed';font-size:10px;letter-spacing:1px;text-transform:uppercase;
   padding:2px 7px;border-radius:20px;border:1px solid var(--line-lit);color:var(--bone-dim)}
 .pip.armed{color:var(--danger);border-color:var(--danger)}
@@ -180,6 +189,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 .dock-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .dock-h .lbl{font-family:'Barlow Condensed';letter-spacing:2px;text-transform:uppercase;font-size:11px;color:var(--lamp-dim)}
 .dock-h .prompt{font-family:'Barlow Condensed';letter-spacing:1px;font-size:14px;color:var(--lamp)}
+.drewnote{color:var(--green)}.drewnote b{color:#8fd14f}
 .hand{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
 .pcard{flex:0 0 auto;width:132px;min-height:186px;border-radius:6px;background:var(--stall-lit);
   position:relative;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.45);cursor:pointer;
@@ -246,7 +256,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 <body>
 <div class="topbar">
   <div class="brand">RAT'S <b>KITCHEN</b></div>
-  <div class="meta"><span class="build">BUILD v3.1.2</span></div>
+  <div class="meta"><span class="build">BUILD v3.2.0</span></div>
 </div>
 
 <div id="lobby" class="wrap">
@@ -384,7 +394,15 @@ function render(){
   [...document.querySelectorAll('.pcard[data-cid]')].forEach(el=>{
     el.onclick=()=>{ selectedCardId = (selectedCardId===el.dataset.cid)?null:el.dataset.cid; render(); };
   });
-  $('dockPrompt').textContent = STATE.over ? '' : (meActive ? 'Your turn — play a card or act' : waitingMsg());
+  if(meActive && STATE.justDrew && STATE.justDrew.length){
+    const drew=STATE.justDrew.map(d=>{
+      if(d.isRat) return `${d.name}${d.held?' (held)':''}`;
+      return d.name;
+    }).join(', ');
+    $('dockPrompt').innerHTML = `<span class="drewnote">↓ You drew: <b>${esc(drew)}</b></span> · your turn`;
+  } else {
+    $('dockPrompt').textContent = STATE.over ? '' : (meActive ? 'Your turn — play a card or act' : waitingMsg());
+  }
   renderActions(meActive);
   $('log').innerHTML=STATE.log.map(l=>`<div>${esc(l)}</div>`).join('');
   $('log').scrollTop=$('log').scrollHeight;
@@ -431,15 +449,21 @@ function stallHTML(p){
   const bulbs=Array.from({length:3},(_,i)=>`<span class="bulb ${i<p.stars?'':'out'}"></span>`).join('');
   const pct=Math.min(100,(p.weight/STATE.threshold)*100);
   const ticks=Array.from({length:STATE.threshold},()=>'<i></i>').join('');
+  // LAYER 1+2: rats (each rat carries its own buff/nerf markers via ratHTML)
   const rats=p.rats.length?`<div class="counter">${p.rats.map(ratHTML).join('')}</div>`:`<div class="counter empty"></div>`;
+  // LAYER 3: cards placed ON the kitchen, each showing who played it
+  const kcards=(p.kitchenCards||[]);
+  const kitchenRow = kcards.length ? `<div class="kcards">${kcards.map(kc=>
+    `<span class="kcard ${kc.cls}" title="${esc(kc.name)} — placed by ${esc(kc.by)}">
+       <span class="kc-name">${esc(kc.name)}</span><span class="kc-by">${esc(kc.by)}</span>
+     </span>`).join('')}</div>` : '';
+  // armed inspection is the player's OWN pending threat (Layer 4, self-owned)
   const pips=[];
   if(p.armed){
     const own = p.id===YOU;
     const capTxt = p.armed.cap===2?'2-colour':'1-colour';
     pips.push(`<span class="pip armed ${p.armed.ready?'ready':''}">⚑ ${own?'YOUR inspector':'inspector'} ${p.armed.ready?'ready to fire':'arming'} · ${capTxt}</span>`);
   }
-  if(p.boardup) pips.push('<span class="pip board">boarded up</span>');
-  if(p.territorial) pips.push('<span class="pip terr">territorial</span>');
   pips.push(`<span class="pip hand">${p.handCount} cards</span>`);
   const turnflag=(p.id===STATE.active&&!STATE.over)?'<span class="turn-flag"><span class="pulse"></span>to act</span>':'';
   return `<div class="${cls.join(' ')}" data-id="${p.id}">
@@ -451,6 +475,7 @@ function stallHTML(p){
       <div class="stat"><span class="k">Heat</span><span class="v">${p.heat}</span></div>
     </div>
     ${rats}
+    ${kitchenRow}
     <div class="pips">${pips.join('')}</div>
   </div>`;
 }
@@ -545,7 +570,7 @@ function choose(a){
   // Gambit: peek at top 3 first, then pick
   if(a.type==='gambit'){ selectedCardId=null; socket.emit('peekGambit',{id:a.id}); pendingGambit=a; return; }
   // Trash Diver: pick from last 3 discards
-  if(a.type==='trashdiver'){ selectedCardId=null; trashPick(a); return; }
+  if(a.type==='recycle'){ selectedCardId=null; recyclePick(a); return; }
   // Shakedown: needs target then a card-name to demand
   if(a.type==='shakedown'){ picking={act:a,targets:a.targets,msg:'Shakedown — click a stall',then:'shakedown'}; selectedCardId=null; render(); return; }
   if(a.needsTarget){
@@ -587,10 +612,10 @@ async function colourPick(target, cap){
   return second&&second!=='__skip'?[first,second]:[first];
 }
 
-async function trashPick(a){
+async function recyclePick(a){
   const last=(STATE.lastDiscards||[]);
   if(!last.length){ send(a,null,null); return; }
-  const pick=await modalPick('Recover which discard?', last.map(d=>({label:d.name,value:d.id})));
+  const pick=await modalPick('Recycle which card?', last.map(d=>({label:d.name,value:d.id})));
   if(pick) socket.emit('act',{type:a.type,id:a.id,pickId:pick});
 }
 
@@ -598,7 +623,7 @@ const ALL_CARD_TYPES=[['mole','Snap Inspection'],['sched1','Scheduled (1)'],['sc
   ['poach','Poach'],['switch','Switcheroo'],['chilli','Hot Chilli'],['grease','Grease the Palm'],
   ['klepto','Kleptomaniac'],['shakedown','Shakedown'],['territorial','Territorial'],
   ['wok','Wok Block'],['boardup','Board Up'],['food','Food'],['cat','Cat'],['lastresort','Last Resort'],
-  ['delivery','Special Delivery'],['trashdiver','Trash Diver'],['rattrap','Rat Trap'],
+  ['delivery','Special Delivery'],['recycle','Recycle Day'],['rattrap','Rat Trap'],
   ['exterm','Exterminator'],['inherit','Inheritance'],['gambit','Gambit']].sort((a,b)=>a[1].localeCompare(b[1]));
 async function shakedownName(a, targetId){
   const pick=await modalPick('Demand which card?', ALL_CARD_TYPES.map(([v,l])=>({label:l,value:v})));
@@ -607,7 +632,7 @@ async function shakedownName(a, targetId){
 function pickMsg(a){
   const verb={mole:'Inspect',fire:'Fire inspection on',poach:'Poach from',play_ratato:'Deploy Ratato Rat into',
     switch:'Swap with',chilli:'Plant a chilli in',territorial:'Mark',grease:'Grease',
-    klepto:'Rob a card from',shakedown:'Shake down',rattrap:'Trap'}[a.type]||'Target';
+    klepto:'Rob a card from',shakedown:'Shake down',hotratato:'Dump a rat into',rattrap:'Trap'}[a.type]||'Target';
   return verb+' — click a stall';
 }
 socket.on('gambitPeek', async ({cardId, options})=>{

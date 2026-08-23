@@ -33,7 +33,7 @@ function project(g, viewerId) {
     })(),
     binsRats: g.bins.filter(b => b.rat).length,
     deckLeft: g.deck.length,
-    lastDiscards: g.bins.filter(b => b.card).slice(-3).map(b => ({ id: b.id, card: b.card, name: (E.CARDS[b.card]&&E.CARDS[b.card].name)||b.card })),
+    lastDiscards: (g.discard||[]).slice(-3).map(b => ({ id: b.id, card: b.card, name: (E.CARDS[b.card]&&E.CARDS[b.card].name)||b.card })),
     players: g.players.map(p => ({
       id: p.id, name: p.name, bot: p.bot, alive: p.alive,
       stars: p.stars, weight: E.weight(p), heat: E.heat(p), count: p.rats.length,
@@ -41,6 +41,16 @@ function project(g, viewerId) {
       rats: p.rats.map(r => ({ kind: r.kind, name: r.name, w: r.w, heat: r.heat, col: r.col, cols: r.cols||null, prop: r.prop, desc: (E.RATS[r.kind]&&E.RATS[r.kind].desc)||"", shielded: !!r._catShield, chilli: !!r._chilliBy })),
       armed: p.armed ? { cap: p.armed.cap, ready: p.armed.age >= 1 } : null,
       boardup: p.boardup, territorial: p.territorial,
+      // Layer 3: cards sitting ON this kitchen, with who played them (for the layered display)
+      kitchenCards: (() => {
+        const out = [];
+        const nameOf = id => { const q = g.players.find(x => x.id === id); return q ? q.name : '?'; };
+        if (p._inheritBy) out.push({ key: 'inherit', name: 'Inheritance', by: nameOf(p._inheritBy), cls: 'engine' });
+        if (p._rattrap) out.push({ key: 'rattrap', name: 'Rat Trap', by: nameOf(p._rattrap), cls: 'engine' });
+        if (p._terrBy) out.push({ key: 'territorial', name: 'Territorial', by: nameOf(p._terrBy), cls: 'control' });
+        if (p.boardup > 0) out.push({ key: 'boardup', name: 'Board Up', by: p.name, cls: 'defence' });
+        return out;
+      })(),
       handCount: p.hand.length,
       hand: p.id === viewerId ? p.hand.map(c => {
         if (c.ratcard) return { id: c.id, card: 'ratato_rat', name: c.ratcard.name, cls: 'attack', desc: (E.RATS.ratato&&E.RATS.ratato.desc)||'', isRat: true, col: c.ratcard.col, w: c.ratcard.w, heat: c.ratcard.heat };
@@ -48,6 +58,7 @@ function project(g, viewerId) {
       }) : null,
     })),
     you: viewerId,
+    justDrew: (g.players[g.active] && g.players[g.active].id === viewerId) ? (g.justDrew || []) : [],
     yourActions: (() => {
       const p = g.players.find(x => x.id === viewerId);
       if (!p || !p.alive || g.over) return [];
@@ -188,7 +199,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const VERSION = '3.1.2';
+const VERSION = '3.2.0';
 app.get('/version', (req, res) => res.json({ version: VERSION }));
 
 const PORT = process.env.PORT || 3000;
