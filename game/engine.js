@@ -51,7 +51,7 @@ const CARDS = {
   delivery:    { name: 'Special Delivery',cls: 'engine', desc: 'Take the TOP rat of the bins into your kitchen. Never choose.' },
   recycle:     { name: 'Recycle Day',     cls: 'engine', desc: 'Take any one of the last 3 discarded action cards back into your hand.' },
   rattrap:     { name: 'Rat Trap',        cls: 'engine', desc: 'The next rat that would enter the trapped kitchen is caught and sent to the bins.' },
-  exterm:      { name: 'Exterminator',    cls: 'engine', desc: 'Instantly remove one of your own rats (your hottest) to the bins — cool your heat.' },
+  exterm:      { name: 'Exterminator',    cls: 'engine', desc: 'Remove any one rat — yours or a rival-s — to the bins. Cool your own heat, or set a rival back.' },
   inherit:     { name: 'Inheritance',     cls: 'engine', desc: 'Place on a rival. If THAT rival is later shut down, you take 2 of their cards at random.' },
   gambit:      { name: 'Gambit',          cls: 'drawn', desc: 'Look at the top 3 cards of the deck. Keep 1; put the other 2 back on top (you know what they are).' },
   wd_release:  { name: 'WD: Rat Release', cls: 'drawn', desc: 'When drawn, fires at once. The top bins rat escapes to the kitchen holding most of its colour. Cannot be held.' },

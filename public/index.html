@@ -132,6 +132,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 @keyframes chillipulse{0%,100%{box-shadow:0 0 0 2px var(--danger),0 2px 6px rgba(224,83,31,.3)}50%{box-shadow:0 0 0 2px var(--danger),0 2px 12px rgba(224,83,31,.7)}}
 .ratmarks{position:absolute;top:6px;right:2px;display:flex;flex-direction:column;gap:1px;z-index:2}
 .ratmark{font-size:11px;line-height:1}
+.ratclick{cursor:pointer}
 .pips{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;min-height:18px}
 .kcards{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
 .kcard{display:inline-flex;flex-direction:column;padding:3px 8px;border-radius:4px;border:1px solid;
@@ -257,7 +258,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 <body>
 <div class="topbar">
   <div class="brand">RAT'S <b>KITCHEN</b></div>
-  <div class="meta"><span class="build">BUILD v3.3.0</span></div>
+  <div class="meta"><span class="build">BUILD v3.4.1</span></div>
 </div>
 
 <div id="lobby" class="wrap">
@@ -358,6 +359,15 @@ function render(){
   renderNowPlaying();
   const meActive = STATE.active===YOU && !STATE.over;
   $('stalls').innerHTML=STATE.players.map(p=>stallHTML(p)).join('');
+  // tap a rat to see its role/description
+  $('stalls').querySelectorAll('.ratclick').forEach(el=>{
+    el.onclick=(e)=>{
+      e.stopPropagation();
+      // don't hijack a stall-targeting pick in progress
+      if(picking) return;
+      try{ showRatInfo(JSON.parse(el.dataset.rat)); }catch(_){}
+    };
+  });
   if(picking){
     $('pickerBar').classList.remove('hidden');
     $('pickerMsg').textContent=picking.msg;
@@ -372,6 +382,8 @@ function render(){
           else render();
         } else if(then==='shakedown'){
           await shakedownName(a, tid);
+        } else if(then==='exterm'){
+          await extermRat(a, tid);
         } else {
           send(a,tid,null);
         }
@@ -506,7 +518,7 @@ function ratHTML(r){
   const marks=[];
   if(r.shielded) marks.push('<span class="ratmark cat" title="Shielded by a Cat">🐱</span>');
   if(r.chilli) marks.push('<span class="ratmark hot" title="Hot Chilli — explodes next turn">🌶️</span>');
-  return `<div class="${cls.join(' ')}" title="${esc(r.name)} · weight ${r.w} · heat ${r.heat}${r.shielded?' · shielded':''}${r.chilli?' · chilli planted':''}">
+  return `<div class="${cls.join(' ')} ratclick" data-rat='${esc(JSON.stringify({kind:r.kind,name:r.name,w:r.w,heat:r.heat,col:r.col,desc:r.desc||"",prop:r.prop||null}))}' title="${esc(r.name)} · tap for role">
     <div class="band"></div>
     ${marks.length?`<div class="ratmarks">${marks.join('')}</div>`:''}
     <div class="art">${RAT_ART[r.kind]||'🐀'}</div>
@@ -514,6 +526,33 @@ function ratHTML(r){
     <div class="corners"><span class="w">${r.w}</span><span class="h">${r.heat}</span></div></div>`;
 }
 function shortName(n){return n.replace(/ Rat$/,'').replace(/^The /,'')}
+const ATTACK_CARDS=['poach','switch','chilli','hotratato','territorial','klepto','shakedown','mole','sched1','sched2'];
+const BUILD_CARDS=['food','delivery','recycle','rattrap','exterm','inherit','gambit'];
+function whyUnplayable(card){
+  const a=STATE.youActed||{};
+  const k=card.card;
+  if(ATTACK_CARDS.includes(k) && a.attack) return 'already used your attack this turn';
+  if(BUILD_CARDS.includes(k) && a.build) return 'already used your build this turn';
+  if(k==='food') return (a.stars>=3) ? 'full stars — nothing to heal' : 'no rat to eat and stars are full';
+  if(k==='poach') return 'no rival has a weight-1 rat to poach';
+  if(k==='cat') return 'no rat can take a Cat (not Fat/Alpha, none already shielded)';
+  if(k==='chilli') return 'no valid rival rat to chilli (Spice Rats resist)';
+  if(k==='switch') return 'need a rat of yours and a rival rat to swap';
+  if(k==='hotratato') return 'you have no rat to dump';
+  if(k==='klepto') return 'no rival is holding a card to steal';
+  if(k==='shakedown') return 'no rival is holding a card';
+  if(k==='grease') return 'no rival has an armed inspection to grease';
+  if(k==='territorial') return a.attack ? 'already used your attack this turn' : 'no rival kitchen to mark';
+  if(k==='delivery') return a.playedRat ? 'already took a rat this turn' : 'no rat in the bins, or your kitchen is full';
+  if(k==='recycle') return 'nothing in the discard to recover';
+  if(k==='exterm') return a.build ? 'already used your build this turn' : 'no rats anywhere to exterminate';
+  if(k==='lastresort') return 'you have no rat to eat';
+  if(k==='wok') return 'Wok Block is reactive — plays automatically when inspected';
+  if(k==='boardup') return a.build ? 'already used your build this turn' : 'can\'t board up right now';
+  if(k==='sched1'||k==='sched2') return a.attack ? 'already used your attack this turn' : (a.hasArmed ? 'you already have an inspection armed' : 'can\'t arm right now');
+  if(card.isRat) return a.playedRat ? 'already placed a rat this turn' : 'no rival kitchen to deploy into';
+  return 'can\'t play this right now';
+}
 function renderActions(meActive){
   const box=$('actions');
   if(!meActive||picking){box.innerHTML='';return;}
@@ -530,7 +569,7 @@ function renderActions(meActive){
       if(cardActs.length){
         html+=cardActs.map((a,i)=>`<button data-ci="${i}">${esc(playVerb(a,card))}</button>`).join('');
       }else{
-        html+=`<span style="font-family:'Barlow Condensed';letter-spacing:1px;color:var(--ash);align-self:center;padding:0 6px">can't play this right now</span>`;
+        html+=`<span style="font-family:'Barlow Condensed';letter-spacing:1px;color:var(--ash);align-self:center;padding:0 6px">${esc(whyUnplayable(card))}</span>`;
       }
       html+=`<button class="end" data-desel="1">Back</button>`;
       box.innerHTML=html;
@@ -570,6 +609,22 @@ function showCardInfo(card){
   wrap.onclick=e=>{ if(e.target===wrap||e.target.dataset.close) wrap.remove(); };
   document.body.appendChild(wrap);
 }
+function showRatInfo(r){
+  const hasTask = r.prop && r.prop!=='plain rat, no special task';
+  const roleLabel = hasTask ? 'Special rat' : 'Plain stock — no special task';
+  const colTxt = r.col ? ({red:'🔴 Red',blue:'🔵 Blue',green:'🟢 Green',yellow:'🟡 Yellow'}[r.col]||r.col) : 'Colourless';
+  const wrap=document.createElement('div');
+  wrap.className='cardinfo';
+  wrap.innerHTML=`<div class="box">
+    <div class="top" style="background:var(--lamp);color:var(--grease)">${roleLabel}</div>
+    <h3>🐀 ${esc(r.name)}</h3>
+    <p style="padding-bottom:4px"><b>Weight ${r.w}</b> · <b>Heat ${r.heat}</b> · ${colTxt}</p>
+    <p>${esc(r.desc||'A plain rat with no special ability — just stock in your kitchen.')}</p>
+    <div class="foot"><button data-close="1">Close</button></div>
+  </div>`;
+  wrap.onclick=e=>{ if(e.target===wrap||e.target.dataset.close) wrap.remove(); };
+  document.body.appendChild(wrap);
+}
 function inspBand(c){
   // Mole is colour-blind (hits any). Scheduled cards have FIXED colours printed on them.
   const key = (typeof c === 'string') ? c : c.card;
@@ -595,6 +650,8 @@ function choose(a){
   if(a.type==='recycle'){ selectedCardId=null; recyclePick(a); return; }
   // Shakedown: needs target then a card-name to demand
   if(a.type==='shakedown'){ picking={act:a,targets:a.targets,msg:'Shakedown — click a stall',then:'shakedown'}; selectedCardId=null; render(); return; }
+  // Exterminator: pick a kitchen, then which rat in it to remove
+  if(a.type==='exterm'){ picking={act:a,targets:a.targets,msg:'Exterminator — click a kitchen',then:'exterm'}; selectedCardId=null; render(); return; }
   if(a.needsTarget){
     // fire no longer needs a colour pick — colours are fixed on the card
     picking={act:a,targets:a.targets,msg:pickMsg(a),then:null};
@@ -650,6 +707,19 @@ const ALL_CARD_TYPES=[['mole','Snap Inspection'],['sched1','Scheduled (1)'],['sc
 async function shakedownName(a, targetId){
   const pick=await modalPick('Demand which card?', ALL_CARD_TYPES.map(([v,l])=>({label:l,value:v})));
   if(pick) socket.emit('act',{type:a.type,id:a.id,target:targetId,named:pick});
+}
+async function extermRat(a, targetId){
+  const kitchen=STATE.players.find(x=>x.id===targetId);
+  const rats=(kitchen&&kitchen.rats)||[];
+  if(!rats.length){ render(); return; }
+  const opts=rats.map(r=>{
+    const dot={red:'🔴',blue:'🔵',green:'🟢',yellow:'🟡'}[r.col]||'⚪';
+    return {label:`${dot} ${esc(r.name)} · w${r.w} h${r.heat}`, value:r.id};
+  });
+  const whose = targetId===YOU ? 'your' : esc(kitchen.name)+"'s";
+  const pick=await modalPick('Exterminate which rat in '+whose+' kitchen?', opts);
+  if(pick) socket.emit('act',{type:a.type,id:a.id,target:targetId,ratId:pick});
+  else render();
 }
 function pickMsg(a){
   const verb={mole:'Inspect',fire:'Fire inspection on',poach:'Poach from',play_ratato:'Deploy Ratato Rat into',

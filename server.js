@@ -58,6 +58,11 @@ function project(g, viewerId) {
       }) : null,
     })),
     you: viewerId,
+    youActed: (() => {
+      const me = g.players.find(x => x.id === viewerId);
+      if (!me) return null;
+      return { attack: !!me._actedAttack, build: !!me._actedBuild, playedRat: !!me._playedRat, stars: me.stars, hasArmed: !!me.armed };
+    })(),
     justDrew: (g.players[g.active] && g.players[g.active].id === viewerId) ? (g.justDrew || []) : [],
     yourActions: (() => {
       const p = g.players.find(x => x.id === viewerId);
@@ -199,7 +204,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const VERSION = '3.3.0';
+const VERSION = '3.4.1';
 app.get('/version', (req, res) => res.json({ version: VERSION }));
 
 const PORT = process.env.PORT || 3000;

@@ -156,9 +156,11 @@ function legalActions(g, p) {
     // ---- trash diver: take one of the last 3 discards ----
     if (t === 'recycle' && !p._actedBuild && g.discard.length)
       push({ id: c.id, type: t, label: 'Recycle Day (recover a card)' });
-    // ---- exterminator: clear your own hottest rat ----
-    if (t === 'exterm' && !p._actedBuild && p.rats.length)
-      push({ id: c.id, type: t, label: 'Exterminator (clear your rat)' });
+    // ---- exterminator: remove ANY rat (yours or a rival's) to the bins ----
+    if (t === 'exterm' && !p._actedBuild) {
+      const withRats = [p, ...opps].filter(x => x.rats.length && (x.id === p.id || x.boardup === 0));
+      if (withRats.length) push({ id: c.id, type: t, needsTarget: true, needsRat: true, targets: withRats.map(o => o.id), label: 'Exterminator (remove a rat)' });
+    }
     // ---- gambit: scry top 3 ----
     if (t === 'gambit' && !p._actedBuild && g.deck.length)
       push({ id: c.id, type: t, label: 'Gambit (look at top 3)' });
@@ -322,8 +324,15 @@ const theirs = t.rats.filter(r => r.prop !== 'no_steal').sort((a, b) => b.w - a.
     }
     case 'exterm': {
       bin(takeCard(act.id));
-      const r = p.rats.slice().sort((a, b) => b.heat - a.heat)[0];
-      if (r) { p.rats = p.rats.filter(x => x.id !== r.id); g.bins.push({ id: r.id, rat: r }); E.logAdd(g, `${p.name} calls the Exterminator on a ${r.name}.`); }
+      const kitchen = t || p;   // target kitchen (yours or a rival's)
+      const r = (ratId && kitchen.rats.find(x => x.id === ratId))
+                || kitchen.rats.slice().sort((a, b) => b.heat - a.heat)[0];   // fallback: hottest
+      if (r) {
+        E.ratToBins(g, kitchen, r);
+        const whose = kitchen.id === p.id ? 'their own' : `${kitchen.name}'s`;
+        E.logAdd(g, `${p.name} calls the Exterminator on ${whose} ${r.name}.`);
+      }
+      if (t && t.id !== p.id) { if(!p._hitZones) p._hitZones={}; p._hitZones[t.id] = true; }
       p._actedBuild = true; break;
     }
     case 'klepto': {
@@ -391,7 +400,16 @@ function botTurn(g) {
     if (!choice || choice.type === 'end') break;
     let target = null, ratId = null;
     if (choice.needsTarget) target = botTarget(g, p, choice);
-    if (choice.needsRat) { const r = p.rats.slice().sort((a, b) => b.w - a.w)[0]; ratId = r && r.id; }
+    if (choice.needsRat) {
+      // for Exterminator the rat comes from the TARGET kitchen; otherwise from own rats
+      if (choice.type === 'exterm') {
+        const kitchen = target ? g.players.find(x => x.id === target) : p;
+        const r = kitchen && kitchen.rats.slice().sort((a, b) => (kitchen.id===p.id ? b.heat-a.heat : b.w-a.w))[0];
+        ratId = r && r.id;
+      } else {
+        const r = p.rats.slice().sort((a, b) => b.w - a.w)[0]; ratId = r && r.id;
+      }
+    }
     apply(g, p, choice, target, ratId);
     if (p._actedAttack && p._actedBuild) {
       // still allow firing an armed inspection (free)
@@ -463,6 +481,7 @@ function botChoose(g, p, acts) {
   // 8. otherwise do a small build or just end
   if (has('hotratato') && p.rats.length) return has('hotratato');
   if (has('play_ratato')) return has('play_ratato');
+  if (has('exterm') && (p.heat >= 3 || (lead && E.weight(lead) > E.weight(p) && lead.rats.length))) return has('exterm');
   if (has('recycle')) return has('recycle');
   if (has('inherit') && lead) return has('inherit');
   if (has('gambit')) return has('gambit');
@@ -475,6 +494,13 @@ function botChoose(g, p, acts) {
 function botTarget(g, p, act) {
   const cands = act.targets.map(id => g.players.find(x => x.id === id)).filter(Boolean);
   if (!cands.length) return null;
+  if (act.type === 'exterm') {
+    // if a rival is ahead and reachable, remove their heaviest rat; else self-cool
+    const rivals = cands.filter(x => x.id !== p.id);
+    const leader = rivals.slice().sort((a, b) => E.weight(b) - E.weight(a))[0];
+    if (leader && E.weight(leader) >= E.weight(p) && leader.rats.length) return leader.id;
+    return p.id;   // cool own heat
+  }
   if (act.type === 'play_ratato' || act.type === 'territorial' || act.type === 'chilli')
     return cands.sort((a, b) => E.weight(b) - E.weight(a))[0].id; // hurt the leader
   if (act.type === 'rattrap') return cands.sort((a, b) => E.weight(b) - E.weight(a))[0].id;
