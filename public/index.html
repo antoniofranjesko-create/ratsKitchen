@@ -258,7 +258,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 <body>
 <div class="topbar">
   <div class="brand">RAT'S <b>KITCHEN</b></div>
-  <div class="meta"><span class="build">BUILD v3.4.1</span></div>
+  <div class="meta"><span class="build">BUILD v3.4.2</span></div>
 </div>
 
 <div id="lobby" class="wrap">
@@ -362,9 +362,9 @@ function render(){
   // tap a rat to see its role/description
   $('stalls').querySelectorAll('.ratclick').forEach(el=>{
     el.onclick=(e)=>{
-      e.stopPropagation();
-      // don't hijack a stall-targeting pick in progress
+      // during a target pick, let the click fall through to the stall (don't intercept)
       if(picking) return;
+      e.stopPropagation();
       try{ showRatInfo(JSON.parse(el.dataset.rat)); }catch(_){}
     };
   });
