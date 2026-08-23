@@ -39,7 +39,7 @@ function project(g, viewerId) {
       stars: p.stars, weight: E.weight(p), heat: E.heat(p), count: p.rats.length,
       // rats are public (zones are public) — show kind + colour, no ids to others
       rats: p.rats.map(r => ({ kind: r.kind, name: r.name, w: r.w, heat: r.heat, col: r.col, cols: r.cols||null, prop: r.prop, desc: (E.RATS[r.kind]&&E.RATS[r.kind].desc)||"", shielded: !!r._catShield, chilli: !!r._chilliBy })),
-      armed: p.armed ? { cap: p.armed.cap, ready: p.armed.age >= 1 } : null,
+      armed: p.armed ? { cap: p.armed.cap, ready: p.armed.age >= 1, cols: (p.id === viewerId ? (p.armed.cols||null) : null) } : null,
       boardup: p.boardup, territorial: p.territorial,
       // Layer 3: cards sitting ON this kitchen, with who played them (for the layered display)
       kitchenCards: (() => {
@@ -54,7 +54,7 @@ function project(g, viewerId) {
       handCount: p.hand.length,
       hand: p.id === viewerId ? p.hand.map(c => {
         if (c.ratcard) return { id: c.id, card: 'ratato_rat', name: c.ratcard.name, cls: 'attack', desc: (E.RATS.ratato&&E.RATS.ratato.desc)||'', isRat: true, col: c.ratcard.col, w: c.ratcard.w, heat: c.ratcard.heat };
-        const d = E.CARDS[c.card]||{}; return { id: c.id, card: c.card, name: d.name||c.card, sub: d.sub||null, cls: d.cls||'drawn', desc: d.desc||'' };
+        const d = E.CARDS[c.card]||{}; return { id: c.id, card: c.card, name: d.name||c.card, sub: d.sub||null, cls: d.cls||'drawn', desc: d.desc||'', cols: c.cols||null };
       }) : null,
     })),
     you: viewerId,
@@ -199,7 +199,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const VERSION = '3.2.0';
+const VERSION = '3.3.0';
 app.get('/version', (req, res) => res.json({ version: VERSION }));
 
 const PORT = process.env.PORT || 3000;

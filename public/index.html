@@ -208,6 +208,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 .pcard.nerf .top{background:var(--c-nerf)} .pcard.buff .top{background:var(--c-buff)}
 .pcard.drawn .top{background:var(--c-drawn)}
 .pcard .cname{font-family:'Bebas Neue';font-size:17px;line-height:.95;letter-spacing:.5px;color:var(--bone);padding:7px 8px 2px}
+.pcard .csub{font-family:'Barlow Condensed';font-size:11px;letter-spacing:.5px;color:var(--bone-dim);padding:0 8px 2px;text-transform:uppercase}
 .pcard .art{height:40px;display:flex;align-items:center;justify-content:center;font-size:26px;opacity:.5;filter:grayscale(1)}
 .pcard .cdesc{font-family:'Barlow';font-size:9.5px;line-height:1.3;color:var(--bone-dim);
   padding:4px 8px 8px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
@@ -256,7 +257,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 <body>
 <div class="topbar">
   <div class="brand">RAT'S <b>KITCHEN</b></div>
-  <div class="meta"><span class="build">BUILD v3.2.0</span></div>
+  <div class="meta"><span class="build">BUILD v3.3.0</span></div>
 </div>
 
 <div id="lobby" class="wrap">
@@ -380,11 +381,22 @@ function render(){
   const me=STATE.players.find(p=>p.id===YOU);
   $('hand').innerHTML=(me&&me.hand||[]).map((c,i)=>{
     const cls=c.cls||CARD_CLS[c.card]||'drawn';
-    const band=inspBand(c.card);
+    const band=inspBand(c);
     const short=shortDesc(c.desc);
+    // for Scheduled cards, show the fixed colours as a readable subhead
+    let sub='';
+    if((c.card==='sched1'||c.card==='sched2') && c.cols && c.cols.length){
+      const dots=c.cols.map(col=>({red:'🔴',blue:'🔵',green:'🟢',yellow:'🟡'}[col]||col)).join('');
+      sub=`<div class="csub">Scheduled · ${dots}</div>`;
+    } else if(c.card==='mole'){
+      sub=`<div class="csub">Snap · any colour</div>`;
+    } else if(c.sub){
+      sub=`<div class="csub">${esc(c.sub)}</div>`;
+    }
     return `<div class="pcard ${cls} ${selectedCardId===c.id?'sel':''}" data-cid="${c.id}" data-ci="${i}">
       <div class="top">${CARD_TYPE[cls]}</div>
       <div class="cname">${esc(c.name)}</div>
+      ${sub}
       <div class="art">${CARD_ART[c.card]||'🎴'}</div>
       ${band}
       <div class="cdesc">${esc(short)}</div>
@@ -462,7 +474,12 @@ function stallHTML(p){
   if(p.armed){
     const own = p.id===YOU;
     const capTxt = p.armed.cap===2?'2-colour':'1-colour';
-    pips.push(`<span class="pip armed ${p.armed.ready?'ready':''}">⚑ ${own?'YOUR inspector':'inspector'} ${p.armed.ready?'ready to fire':'arming'} · ${capTxt}</span>`);
+    // owner sees their fixed colours; opponents just see that an inspector is armed (bluff)
+    let colTxt = '';
+    if(own && p.armed.cols && p.armed.cols.length){
+      colTxt = ' · ' + p.armed.cols.map(c=>({red:'🔴',blue:'🔵',green:'🟢',yellow:'🟡'}[c]||c)).join('');
+    }
+    pips.push(`<span class="pip armed ${p.armed.ready?'ready':''}">⚑ ${own?'YOUR inspector':'inspector'} ${p.armed.ready?'ready to fire':'arming'} · ${capTxt}${colTxt}</span>`);
   }
   pips.push(`<span class="pip hand">${p.handCount} cards</span>`);
   const turnflag=(p.id===STATE.active&&!STATE.over)?'<span class="turn-flag"><span class="pulse"></span>to act</span>':'';
@@ -553,11 +570,16 @@ function showCardInfo(card){
   wrap.onclick=e=>{ if(e.target===wrap||e.target.dataset.close) wrap.remove(); };
   document.body.appendChild(wrap);
 }
-function inspBand(cardKey){
-  // show target colour band under inspection cards. Actual colours are chosen on arming,
-  // so the card face shows 'any of 4' for scheduled and 'colour-blind' for the mole snap.
-  if(cardKey==='mole') return `<div class="inspband"><i class="any"></i></div>`;
-  if(cardKey==='sched1'||cardKey==='sched2') return `<div class="inspband"><i class="red"></i><i class="blue"></i><i class="green"></i><i class="yellow"></i></div>`;
+function inspBand(c){
+  // Mole is colour-blind (hits any). Scheduled cards have FIXED colours printed on them.
+  const key = (typeof c === 'string') ? c : c.card;
+  if(key==='mole') return `<div class="inspband"><i class="any"></i></div>`;
+  if(key==='sched1'||key==='sched2'){
+    const cols = (typeof c==='object' && c.cols && c.cols.length) ? c.cols : null;
+    if(cols) return `<div class="inspband">${cols.map(col=>`<i class="${col}"></i>`).join('')}</div>`;
+    // fallback if colours not yet known
+    return `<div class="inspband"><i class="any"></i></div>`;
+  }
   return '';
 }
 function shortDesc(d){
@@ -574,8 +596,8 @@ function choose(a){
   // Shakedown: needs target then a card-name to demand
   if(a.type==='shakedown'){ picking={act:a,targets:a.targets,msg:'Shakedown — click a stall',then:'shakedown'}; selectedCardId=null; render(); return; }
   if(a.needsTarget){
-    // 'fire' needs a colour after the target
-    picking={act:a,targets:a.targets,msg:pickMsg(a),then:a.needsColour?'colour':null};
+    // fire no longer needs a colour pick — colours are fixed on the card
+    picking={act:a,targets:a.targets,msg:pickMsg(a),then:null};
     selectedCardId=null; render(); return;
   }
   selectedCardId=null;

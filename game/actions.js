@@ -168,10 +168,12 @@ function legalActions(g, p) {
     }
   }
 
-  // fire armed inspection (free, any time on your turn)
+  // fire armed inspection (free, on your turn). Colours are FIXED on the card, so
+  // you may fire at ANY opponent — it whiffs for 0 if they lack the card's colours.
   if (p.armed && p.armed.age >= 1) {
-    const legal = E.opponents(g, p).filter(o => o.boardup === 0 && o.rats.some(r => r.col) && !p._hitZones[o.id]);
-    if (legal.length) push({ type: 'fire', needsTarget: true, needsColour: p.armed.cap, targets: legal.map(o => o.id), label: 'Fire Health Inspection' });
+    const colsLabel = (p.armed.cols || []).join('/');
+    const legal = E.opponents(g, p).filter(o => o.boardup === 0 && !p._hitZones[o.id]);
+    if (legal.length) push({ type: 'fire', needsTarget: true, targets: legal.map(o => o.id), label: `Fire Inspection (${colsLabel})` });
   }
   // 2 Food -> 1 star
   if (!p._actedBuild && p.hand.filter(c => c.card === 'food').length >= 2 && p.stars < E.STARS)
@@ -203,11 +205,13 @@ function apply(g, p, act, targetId, ratId) {
     let cardCls = catalogue ? catalogue.cls : 'drawn';
     if (act.type === 'play_ratato') { cardKey = 'ratato_rat'; cardName = 'Ratato Rat'; cardCls = 'attack'; cardSub = null; }
     if (act.type === 'fire') { cardKey = 'fire'; cardName = 'Health Inspection'; cardSub = 'Fires!'; cardCls = 'attack'; }
+    // for a fire, the colours come from the armed inspection, not the act
+    const shownCols = (act.type === 'fire' && p.armed) ? (p.armed.cols || null) : (act.cols || null);
     g.lastPlayed = {
       by: p.id, byName: p.name,
       target: t ? t.id : null, targetName: t ? t.name : null,
       key: cardKey, name: cardName, sub: cardSub, cls: cardCls,
-      cols: act.cols || null, at: (g.lastPlayedSeq = (g.lastPlayedSeq || 0) + 1),
+      cols: shownCols, at: (g.lastPlayedSeq = (g.lastPlayedSeq || 0) + 1),
     };
   }
   const ATTACKS = ["mole","poach","play_ratato","hotratato","switch","chilli","territorial","fire","klepto","shakedown"];
@@ -241,14 +245,18 @@ function apply(g, p, act, targetId, ratId) {
     }
     case 'mole': { bin(takeCard(act.id)); E.fireMole(g, p, t); p._actedAttack = true; break; }
     case 'sched1': case 'sched2': {
-      bin(takeCard(act.id));
+      const card = takeCard(act.id);
+      bin(card);
       const cap = act.type === 'sched2' ? 2 : 1;
-      p.armed = { cap, age: 0 };   // no colour yet — decided when it fires
+      // colours are FIXED on the card (assigned at deck-build); carry them on the armed inspection
+      const cols = (card && card.cols) ? card.cols.slice() : [];
+      p.armed = { cap, cols, age: 0 };
       p._actedAttack = true;
-      E.logAdd(g, `${p.name} arms a Health Inspection (face-down).`); break;
+      E.logAdd(g, `${p.name} arms a ${cap === 2 ? '2' : '1'}-colour Health Inspection (${cols.join('/')}).`); break;
     }
     case 'fire': {
-      const cols = (act.cols && act.cols.length) ? act.cols : (t ? topColours(t, p.armed ? p.armed.cap : 1) : []);
+      // damage uses the card's FIXED colours — if the target lacks them, it whiffs for 0
+      const cols = (p.armed && p.armed.cols) ? p.armed.cols : [];
       p.armed = null;
       E.fireScheduled(g, p, t, cols);
       if (t && t.id !== p.id) { if(!p._hitZones) p._hitZones={}; p._hitZones[t.id] = true; }
@@ -404,7 +412,8 @@ function threatTo(g, p) {
   let d = 0;
   for (const o of E.opponents(g, p)) {
     if (o.armed && o.armed.age >= 1) {
-      const cols = topColours(p, o.armed.cap);   // they'll pick your hottest colours
+      // fixed colours now — threat is your heat in exactly those colours
+      const cols = o.armed.cols || [];
       d += E.heatOf(p, cols);
     }
   }

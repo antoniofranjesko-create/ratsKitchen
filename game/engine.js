@@ -5,7 +5,7 @@
 
 'use strict';
 
-const COLOURS = ['red', 'blue', 'green', 'yellow'];
+const COLOURS = ['red', 'blue', 'green'];
 const THRESHOLD = 6;   // weight to win
 const STARS = 3;
 const HAND = 7;
@@ -33,8 +33,8 @@ const RATS = {
 // action card catalogue: type -> {name, cls}
 const CARDS = {
   mole:        { name: 'Health Inspection', sub: 'Naked Mole Rat', cls: 'attack', desc: 'Snap inspection. Any rival, flat -1 star, immediately. Colour-agnostic (the mole is blind).' },
-  sched1:      { name: 'Health Inspection', sub: 'Scheduled — 1 Colour', cls: 'attack', desc: 'Arm face-down. Fires next turn after your draw: pick a kitchen, then 1 colour; damage = their heat in that colour.' },
-  sched2:      { name: 'Health Inspection', sub: 'Scheduled — 2 Colour', cls: 'attack', desc: 'Arm face-down. Fires next turn: pick a kitchen, then up to 2 colours; damage = their heat in those colours.' },
+  sched1:      { name: 'Health Inspection', sub: 'Scheduled — 1 Colour', cls: 'attack', desc: 'Has one fixed colour. Arm it, then on a later turn fire at a rival — damage = their heat in that colour. Whiffs if they hold none.' },
+  sched2:      { name: 'Health Inspection', sub: 'Scheduled — 2 Colour', cls: 'attack', desc: 'Has two fixed colours. Arm it, then on a later turn fire at a rival — damage = their heat in those two colours. Whiffs if they hold neither.' },
   poach:       { name: 'Poach',           cls: 'attack', desc: 'Steal one weight-1 rat from a rival. Blocked by Boiler, and by any rat in an Alpha-guarded kitchen.' },
   switch:      { name: 'Switcheroo',      cls: 'attack', desc: 'Swap one of your rats for a rival-s, regardless of weight.' },
   chilli:      { name: 'Hot Chilli',      cls: 'attack', desc: 'Place on a rival-s rat (not Spice). It explodes at the start of your next turn — rat to the bins.' },
@@ -61,9 +61,9 @@ const CARDS = {
 function deckConfig(P) {
   // Inspections scale gently; §6 counts are the 6P baseline.
   const inspScale = P / 6;
-  const mole   = Math.max(5, Math.round(6 * inspScale));
-  const sched1 = Math.max(4, Math.round(7 * inspScale));
-  const sched2 = Math.max(4, Math.round(7 * inspScale));
+  const mole   = Math.max(6, Math.round(8 * inspScale));
+  const sched1 = Math.max(6, Math.round(10 * inspScale));
+  const sched2 = Math.max(6, Math.round(10 * inspScale));
   const actions = {
     mole, sched1, sched2,
     poach: 5, switch: 3, chilli: 4, hotratato: 4, grease: 3, klepto: 3, shakedown: 3,
@@ -102,6 +102,27 @@ function makeRat(kind, colour) {
 }
 
 // Build a colour-balanced rat pool (heat balanced 4/4/4/4 per spec 5.3).
+// Assign FIXED colours to Scheduled cards so every colour appears an equal
+// number of times across all of them (matches the rat heat-balance — no colour
+// is safer to hold rats in). 1-colour card = 1 appearance; 2-colour = 2.
+function assignScheduledColours(cards) {
+  // build a queue of colour 'slots', cycling through COLOURS so they're even
+  let ci = Math.floor(Math.random() * COLOURS.length);   // random start each game
+  const nextColour = () => { const c = COLOURS[ci % COLOURS.length]; ci++; return c; };
+  // shuffle the cards so which physical card gets which colour is random
+  for (let i = cards.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [cards[i],cards[j]]=[cards[j],cards[i]]; }
+  for (const c of cards) {
+    if (c.card === 'sched1') {
+      c.cols = [nextColour()];
+    } else {   // sched2: two DIFFERENT colours
+      const a = nextColour();
+      let b = nextColour();
+      if (b === a) b = nextColour();   // avoid a duplicate pair
+      c.cols = [a, b];
+    }
+  }
+}
+
 function buildRatPool(n, opts) {
   opts = opts || {};
   // rat type shares (Ratato excluded here — added separately). Sewer is colourless.
@@ -162,9 +183,17 @@ function newGame(playerDefs) {
 
   // deck = action cards + deck rats
   const deck = [];
+  // Collect Scheduled cards separately so we can assign fixed colours with
+  // EQUAL colour-appearances across all of them (no colour safer than another).
+  const scheduledCards = [];
   for (const [type, count] of Object.entries(cfg.actions)) {
-    for (let i = 0; i < count; i++) deck.push({ id: rid(), card: type });
+    for (let i = 0; i < count; i++) {
+      if (type === 'sched1' || type === 'sched2') scheduledCards.push({ id: rid(), card: type });
+      else deck.push({ id: rid(), card: type });
+    }
   }
+  assignScheduledColours(scheduledCards);
+  for (const c of scheduledCards) deck.push(c);
   for (const r of buildRatPool(cfg.deckRats)) deck.push({ id: r.id, rat: r });
   // Ratato Rats (0 weight, 1 heat) — spread across colours
   for (let i = 0; i < cfg.ratatoRats; i++) deck.push({ id: rid(), rat: makeRat('ratato', COLOURS[i % COLOURS.length]) });
