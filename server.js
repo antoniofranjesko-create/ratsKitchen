@@ -97,9 +97,18 @@ function advance(room, autoBots) {
     // bot: play its whole turn
     A.botTurn(g);
     A.endTurn(g);
+    if (g.over) break;
+    // CRITICAL: endTurn advanced the active player. If the next actor is a human,
+    // their turn must be STARTED here (draw, reset acted-flags, age armed inspections)
+    // before we hand control back — otherwise they get no draw, stale flags, and
+    // their armed inspection never becomes ready to fire.
+    if (!g.players[g.active].bot) {
+      A.startTurn(g);
+      broadcast(room);
+      return;
+    }
     broadcast(room);
     if (!autoBots) return;   // stepping mode: one bot per step, then wait
-    // autoBots mode falls through to keep going (legacy)
   }
   if (!g.over && guard >= 5000) E.logAdd(g, 'Turn limit reached — please report.');
   broadcast(room);
@@ -204,7 +213,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const VERSION = '3.4.3';
+const VERSION = '3.4.4';
 app.get('/version', (req, res) => res.json({ version: VERSION }));
 
 const PORT = process.env.PORT || 3000;
